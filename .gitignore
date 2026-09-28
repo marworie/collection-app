@@ -1,0 +1,25 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# .NET build output
+bin/
+obj/
+
+# Publish profiles (may contain passwords)
+*.pubxml
+*.pubxml.user
+*.publishSettings
+PublishProfiles/
+
+# Frontend
+node_modules/
+dist/
+
+# Built React (generated at publish time)
+CollectionApp/wwwroot/
+
+# Secrets
+.env
+.env.*
