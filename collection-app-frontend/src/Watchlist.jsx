@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useToast } from './ToastContext'
 import ConfirmModal from './ConfirmModal'
 import { apiFetch } from './api'
@@ -95,6 +95,8 @@ function Watchlist({ category, pageTitle, defaultType }) {
 
       <form onSubmit={handleAdd} className="watchlist-add-form">
         <input
+          id="watchlist-title"
+          name="title"
           type="text"
           placeholder="Başlık ekle..."
           value={newTitle}

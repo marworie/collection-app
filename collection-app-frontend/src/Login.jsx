@@ -29,6 +29,7 @@ function Login({ onLoginSuccess }) {
         showToast('Kayıt başarılı, şimdi giriş yapabilirsin!')  
       } else {
         localStorage.setItem('loggedInUser', data.username)
+        localStorage.setItem('token', data.token) // JWT bileti
          localStorage.setItem('avatarKey', data.avatarKey || '')
         onLoginSuccess()
         showToast(`Hoş geldin, ${data.username}!`)  

@@ -1,5 +1,21 @@
 /* Genel sayfa ayarları */
 /* Tarayıcının varsayılan boşluklarını sıfırlıyoruz sidebar tam kenara yapışsın */
+:root {
+  --card-bg: white;
+  --text-main: #333;
+  --text-muted: #888;
+  --border-color: #eee;
+  --page-bg: #f3e8fd;
+}
+
+body.dark-mode {
+  --card-bg: #26263f;
+  --text-main: #e0e0f0;
+  --text-muted: #9090b0;
+  --border-color: #3a3a5a;
+  --page-bg: #1a1a2e;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -26,6 +42,7 @@ body {
   margin-bottom: 8px;
   background: linear-gradient(90deg, #7b2ff7, #f107a3);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1208,6 +1225,7 @@ html.dark-mode {
   color: #333;
   background: linear-gradient(90deg, #7b2ff7, #f107a3);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1638,6 +1656,7 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   font-weight: 800;
   background: linear-gradient(90deg, #7b2ff7, #f107a3);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1849,4 +1868,10 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   .addlist-box {
     max-width: 92vw;
   }
+}
+
+.manual-sort-warning {
+  color: #999;
+  font-style: italic;
+  margin: 10px 0;
 }

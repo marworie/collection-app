@@ -1,4 +1,7 @@
 using CollectionApp.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +17,25 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<CustomListRepository>();
 builder.Services.AddScoped<GoalRepository>();
+
+// JWT ayarları: tokenları kim üretti, kim doğrulayacak, imza anahtarı ne
+var jwtSecret = builder.Configuration["JwtSecret"]
+    ?? throw new InvalidOperationException("JwtSecret bulunamadı");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
+
+builder.Services.AddAuthorization(); // React'in çalıştığı adresten gelen isteklere izin veriyoruz
 
 // React'in çalıştığı adresten gelen isteklere izin veriyoruz
 builder.Services.AddCors(options =>
@@ -42,7 +64,8 @@ app.UseStaticFiles();    // wwwroot içindeki JS, CSS, görselleri sunar
 
 app.UseCors("AllowReactApp");   // CORS politikasını devreye sokuyor
 
-app.UseAuthorization();
+app.UseAuthentication(); // "bu istek kim gönderdi" — token'ı okuyup kimliği çözer
+app.UseAuthorization(); // "bu kişi bunu yapabilir mi" — [Authorize] kontrolünü uygular
 
 app.MapControllers();
 

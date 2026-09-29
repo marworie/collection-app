@@ -1,6 +1,10 @@
 ﻿using CollectionApp.Models;
 using CollectionApp.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 // Giriş yap / kayıt ol / profil güncelle işlerini yöneten controller
 
@@ -11,10 +15,12 @@ namespace CollectionApp.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserRepository _userRepository;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(UserRepository userRepository)
+        public AuthController(UserRepository userRepository, IConfiguration configuration)
         {
             _userRepository = userRepository;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -53,7 +59,8 @@ namespace CollectionApp.Controllers
             }
 
             // avatarKey'i de cevaba ekliyoruz ki frontend localStorage'a kaydedebilsin
-            return Ok(new { message = "Giriş başarılı", username = user.Username, avatarKey = user.AvatarKey });
+            string token = GenerateJwtToken(user);
+            return Ok(new { message = "Giriş başarılı", username = user.Username, avatarKey = user.AvatarKey, token = token });
         }
 
         [HttpPut("update-profile")]
@@ -88,6 +95,31 @@ namespace CollectionApp.Controllers
             string finalAvatarKey = !string.IsNullOrWhiteSpace(request.NewAvatarKey) ? request.NewAvatarKey : user.AvatarKey;
 
             return Ok(new { message = "Profil güncellendi", username = finalUsername, avatarKey = finalAvatarKey });
+        }
+
+        // Kullanıcı bilgilerinden imzalı bir JWT bileti üretir
+        private string GenerateJwtToken(User user)
+        {
+            var jwtSecret = _configuration["JwtSecret"]
+                ?? throw new InvalidOperationException("JwtSecret bulunamadı");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            // Claim: token'ın içine gömülen, "bu bilet kime ait" bilgisi
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username)
+            };
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(7),   // bilet 7 gün geçerli
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

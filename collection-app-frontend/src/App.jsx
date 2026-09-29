@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import Sidebar from './Sidebar'
 import Profile from './Profile'
 import ItemCard from './ItemCard'
@@ -101,7 +101,7 @@ function undoDelete(item) {
 
   useEffect(() => {
     if (showSplash) {
-      // 2 bucuk saniye sonra karşılama ekranını kapat
+      // 2 buçuk saniye sonra karşılama ekranını kapat
       const timer = setTimeout(() => setShowSplash(false),2500)
       // splash erken kapanırsa zamanlayıcıyı temizle gereksiz çalışmasın
       return () => clearTimeout(timer)
@@ -116,6 +116,7 @@ function undoDelete(item) {
 
     function handleLogout() {
     localStorage.removeItem('loggedInUser')
+    localStorage.removeItem('token')
     setIsLoggedIn(false)
     setSidebarOpen(false)   // çıkış yapınca, tekrar girişte menü açık gelmesin
   }
@@ -209,6 +210,7 @@ filteredItems =[...filteredItems].sort((a, b) => {
   return b.id - a.id // 'newest' varsayılan en yeni en üstte
 })
 
+const searchActive = searchQuery.trim() !== ''
 
 function getPageTitle() {
   if (currentView === 'Kitap') return '📚 Kitaplar'
@@ -264,7 +266,9 @@ function getPageTitle() {
 
             <div className="list-controls">
               <input
-              ref={searchInputRef}
+                id="item-search"
+                name="search"
+                ref={searchInputRef}
                 type="text"
                 placeholder="🔍 Başlığa göre ara..."
                 value={searchQuery}
@@ -328,7 +332,13 @@ function getPageTitle() {
               </>
             )}
 
-            {sortBy === 'manual' ? (
+            {sortBy === 'manual' && searchActive && (
+              <p className="manual-sort-warning">
+                🔒 Manuel sıralama, arama kutusu boşken kullanılabilir.
+              </p>
+            )}
+
+            {sortBy === 'manual' && !searchActive ? (
               <DraggableItemList
                 items={filteredItems}
                 onReorder={handleReorder}
