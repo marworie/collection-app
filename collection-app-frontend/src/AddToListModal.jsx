@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useToast } from './ToastContext'
+import { apiFetch } from './api'
 
 // item: hangi öğeyi listelere ekleyip çıkaracağımız
 // onClose: modalı kapatmak için
@@ -14,13 +15,13 @@ function AddToListModal({ item, onClose }) {
   const iconOptions = ['🏷️', '⭐', '❤️', '🎯', '📌', '🔥', '💎', '🌙']
 
   function fetchLists() {
-    fetch('/api/CustomLists')
+    apiFetch('/api/CustomLists')
       .then(res => res.json())
       .then(data => setLists(data))
   }
 
   function fetchItemLists() {
-    fetch(`/api/CustomLists/for-item/${item.id}`)
+    apiFetch(`/api/CustomLists/for-item/${item.id}`)
       .then(res => res.json())
       .then(data => setItemListIds(data))
   }
@@ -35,13 +36,13 @@ async function toggleList(listId) {
   const list = lists.find(l => l.id === listId)
 
   if (isInList) {
-    await fetch(`/api/CustomLists/${listId}/items/${item.id}`, {
+    await apiFetch(`/api/CustomLists/${listId}/items/${item.id}`, {
       method: 'DELETE'
     })
     setItemListIds(prev => prev.filter(id => id !== listId))
     showToast(`${list.icon} "${list.name}" listesinden çıkarıldı`)
   } else {
-    await fetch(`/api/CustomLists/${listId}/items/${item.id}`, {
+    await apiFetch(`/api/CustomLists/${listId}/items/${item.id}`, {
       method: 'POST'
     })
     setItemListIds(prev => [...prev, listId])
@@ -52,7 +53,7 @@ async function toggleList(listId) {
     e.preventDefault()
     if (!newListName.trim()) return
 
-    const response = await fetch('/api/CustomLists', {
+    const response = await apiFetch('/api/CustomLists', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newListName, icon: selectedIcon })

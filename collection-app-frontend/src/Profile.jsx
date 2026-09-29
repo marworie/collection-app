@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useToast } from './ToastContext'
 import AvatarIcon, { AVATAR_OPTIONS } from './AvatarIcon'
+import { apiFetch } from './api'
 
 function Profile() {
   const currentUsername = localStorage.getItem('loggedInUser')
@@ -20,7 +21,7 @@ function Profile() {
   async function handleSave(e) {
     e.preventDefault()
 
-    const response = await fetch('/api/Auth/update-profile', {
+    const response = await apiFetch('/api/Auth/update-profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

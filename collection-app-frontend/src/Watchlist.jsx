@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useToast } from './ToastContext'
 import ConfirmModal from './ConfirmModal'
+import { apiFetch } from './api'
 
 // category: "İzleme" ya da "Okuma"
 // pageTitle: sayfa başlığı (örn. "🎬 İzleme Listem")
@@ -12,7 +13,7 @@ function Watchlist({ category, pageTitle, defaultType }) {
   const [deletingId, setDeletingId] = useState(null) // silme onayı bekleyen öğenin id'si
 
   function fetchWatchlist() {
-    fetch(`/api/Watchlist?category=${category}`)
+    apiFetch(`/api/Watchlist?category=${category}`)
       .then(response => response.json())
       .then(data => setItems(data))
   }
@@ -26,7 +27,7 @@ function Watchlist({ category, pageTitle, defaultType }) {
     e.preventDefault()
     if (!newTitle.trim()) return
 
-    const response = await fetch('/api/Watchlist', {
+    const response = await apiFetch('/api/Watchlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: newTitle, category: category })
@@ -42,7 +43,7 @@ function Watchlist({ category, pageTitle, defaultType }) {
   }
 
   async function confirmDelete() {
-    const response = await fetch(`/api/Watchlist/${deletingId}`, {
+    const response = await apiFetch(`/api/Watchlist/${deletingId}`, {
       method: 'DELETE'
     })
 
@@ -70,7 +71,7 @@ function Watchlist({ category, pageTitle, defaultType }) {
       genre: null
     }
 
-    const addResponse = await fetch('/api/Items', {
+    const addResponse = await apiFetch('/api/Items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newItem)
@@ -78,7 +79,7 @@ function Watchlist({ category, pageTitle, defaultType }) {
 
     if (addResponse.ok) {
       // Koleksiyona eklendi, artık watchlist'ten silebiliriz
-      await fetch(`/api/Watchlist/${item.id}`, {
+      await apiFetch(`/api/Watchlist/${item.id}`, {
         method: 'DELETE'
       })
       fetchWatchlist()

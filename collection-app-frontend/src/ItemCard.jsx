@@ -6,6 +6,7 @@ import './ImageModal.css'
 import confetti from 'canvas-confetti'
 import AddToListModal from './AddToListModal'
 import { useToast } from './ToastContext'
+import { apiFetch } from './api'
 
 function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -94,7 +95,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
     if (!title.trim()) return
     setIsSearching(true)
     const endpoint = type === 'Kitap' ? 'book' : 'movie'
-    const response = await fetch(
+    const response = await apiFetch(
       `/api/Search/${endpoint}?query=${encodeURIComponent(title)}`
     )
     const data = await response.json()
@@ -126,7 +127,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
       isFavorite: isFavorite
     }
 
-    const response = await fetch(`/api/Items/${item.id}`, {
+    const response = await apiFetch(`/api/Items/${item.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedItem)
@@ -165,7 +166,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
       isFavorite: !isFavorite
     }
 
-    const response = await fetch(`/api/Items/${item.id}`, {
+    const response = await apiFetch(`/api/Items/${item.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedItem)
@@ -179,7 +180,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
 
   // Butona her tıklandığında backend e bu öğenin sayacını bir arttır demek
   async function handleRewatch(){
-   const response = await fetch(`/api/Items/${item.id}/rewatch`, {
+   const response = await apiFetch(`/api/Items/${item.id}/rewatch`, {
    method: 'PATCH'
   })
   if (response.ok) {
@@ -189,7 +190,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
 }
 
   async function handleUndoRewatch() {
-  const response = await fetch(`/api/Items/${item.id}/unrewatch`, {
+  const response = await apiFetch(`/api/Items/${item.id}/unrewatch`, {
     method: 'PATCH'
   })
 

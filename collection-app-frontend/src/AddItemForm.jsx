@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from './ToastContext'
+import { apiFetch } from './api'
 
 function AddItemForm({ onItemAdded, currentView }) {
   const showToast = useToast() 
@@ -46,7 +47,7 @@ async function handleSearch() {
   // Kitap seçiliyse OpenLibrary'e, diğer türlerde TMDB'ye soruyoruz
   const endpoint = type === 'Kitap' ? 'book' : 'movie'
 
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/Search/${endpoint}?query=${encodeURIComponent(title)}`
   )
   const data = await response.json()
@@ -77,7 +78,7 @@ function applySearchResult(result) {
       genre: genre || null
     }
 
-    const response = await fetch('/api/Items', {
+    const response = await apiFetch('/api/Items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newItem)

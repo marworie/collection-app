@@ -14,6 +14,7 @@ import SuggestionModal from './SuggestionModal'
 import { useToast } from './ToastContext'
 import CustomLists from './CustomLists'
 import LoginSplash from './LoginSplash'
+import { apiFetch } from './api'
 
 function App() {
   const [items, setItems] = useState([])
@@ -35,7 +36,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(false)
 
   function fetchItems() {
-    fetch('/api/Items')
+    apiFetch('/api/Items')
       .then(response => response.json())
       .then(data => {
         setItems(data)
@@ -49,7 +50,7 @@ function App() {
 
   // 5 saniye sonra gerçekten backend'den silecek bir zamanlayıcı kuruyoruz
   const timeoutId = setTimeout(async () => {
-    await fetch(`/api/Items/${item.id}`, { method: 'DELETE' })
+    await apiFetch(`/api/Items/${item.id}`, { method: 'DELETE' })
     delete pendingDeletes.current[item.id]
   }, 5000)
 
@@ -89,7 +90,7 @@ function undoDelete(item) {
     sortOrder: index
   }))
 
-  await fetch('/api/Items/reorder', {
+  await apiFetch('/api/Items/reorder', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates)

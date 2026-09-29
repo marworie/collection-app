@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ItemCard from './ItemCard'
 import ConfirmModal from './ConfirmModal'
 import { useToast } from './ToastContext'
+import { apiFetch } from './api'
 
 function CustomLists() {
   const showToast = useToast()
@@ -11,13 +12,13 @@ function CustomLists() {
   const [deletingListId, setDeletingListId] = useState(null)
 
   function fetchLists() {
-    fetch('/api/CustomLists')
+    apiFetch('/api/CustomLists')
       .then(res => res.json())
       .then(data => setLists(data))
   }
 
   function fetchListItems(listId) {
-    fetch(`/api/CustomLists/${listId}/items`)
+    apiFetch(`/api/CustomLists/${listId}/items`)
       .then(res => res.json())
       .then(data => setListItems(data))
   }
@@ -33,7 +34,7 @@ function CustomLists() {
   }, [selectedListId])
 
   async function confirmDeleteList() {
-    await fetch(`/api/CustomLists/${deletingListId}`, {
+    await apiFetch(`/api/CustomLists/${deletingListId}`, {
       method: 'DELETE'
     })
     setDeletingListId(null)

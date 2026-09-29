@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from './ToastContext'
+import { apiFetch } from './api'
 
 const TYPE_OPTIONS = ['Hepsi', 'Kitap', 'Dizi', 'Film', 'Belgesel', 'Animasyon', 'Anime']
 const TYPE_ICONS = {
@@ -17,7 +18,7 @@ function GoalsSection({ items }) {
   const [target, setTarget] = useState('')
 
   function fetchGoals() {
-    fetch('/api/Goals')
+    apiFetch('/api/Goals')
       .then(res => res.json())
       .then(data => setGoals(data))
   }
@@ -47,7 +48,7 @@ function GoalsSection({ items }) {
     const targetNumber = Number(target)
     if (!targetNumber || targetNumber < 1) return
 
-    const response = await fetch('/api/Goals', {
+    const response = await apiFetch('/api/Goals', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ year, type, target: targetNumber })
@@ -63,7 +64,7 @@ function GoalsSection({ items }) {
   }
 
   async function handleDelete(goal) {
-    const response = await fetch(`/api/Goals/${goal.id}`, {
+    const response = await apiFetch(`/api/Goals/${goal.id}`, {
       method: 'DELETE'
     })
 
