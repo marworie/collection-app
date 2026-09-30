@@ -4,7 +4,7 @@ using Microsoft.Data.SqlClient;
 
 namespace CollectionApp.Repositories
 {
-    // Tüm repository'lerin ortak atası. abstract: doğrudan new'lenemez, sadece miras alınır.
+    // Tüm repository'lerde ortak . abstract: doğrudan new'lenemez, sadece miras alınır.
     public abstract class BaseRepository
     {
         private readonly string _connectionString;

@@ -3,7 +3,7 @@ import { useToast } from './ToastContext'
 
 // onLoginSuccess: giriş başarılı olunca App'e "artık girişi yaptık" demek için
 function Login({ onLoginSuccess }) {
-  const showToast = useToast();
+  const showToast = useToast()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isRegisterMode, setIsRegisterMode] = useState(false) // giriş mi kayıt mı modundayız
@@ -15,30 +15,36 @@ function Login({ onLoginSuccess }) {
     // isRegisterMode'a göre farklı endpoint'e istek atıyoruz
     const endpoint = isRegisterMode ? 'register' : 'login'
 
-    const response = await fetch(`/api/Auth/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, passwordHash: password })
-    })
+    try {
+      const response = await fetch(`/api/Auth/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passwordHash: password })
+      })
 
-    const data = await response.json()
+      // Gövde boş gelirse (örn. bazı 401'ler) json() patlamasın
+      const data = await response.json().catch(() => ({}))
 
-    if (response.ok) {
-      if (isRegisterMode) {
-        setIsRegisterMode(false)
-        showToast('Kayıt başarılı, şimdi giriş yapabilirsin!')  
+      if (response.ok) {
+        if (isRegisterMode) {
+          setIsRegisterMode(false)
+          showToast('Kayıt başarılı, şimdi giriş yapabilirsin!')
+        } else {
+          localStorage.setItem('loggedInUser', data.username)
+          localStorage.setItem('token', data.token)
+          localStorage.setItem('avatarKey', data.avatarKey || '')
+          onLoginSuccess()
+          showToast(`Hoş geldin, ${data.username}!`)
+        }
       } else {
-        localStorage.setItem('loggedInUser', data.username)
-        localStorage.setItem('token', data.token) // JWT bileti
-         localStorage.setItem('avatarKey', data.avatarKey || '')
-        onLoginSuccess()
-        showToast(`Hoş geldin, ${data.username}!`)  
+        showToast(data.message || 'Bir hata oluştu', 'error')
       }
-    } else {
-      showToast(data.message || 'Bir hata oluştu', 'error') 
+    } catch {
+      // Sunucuya hiç ulaşılamadı
+      showToast('Sunucuya ulaşılamadı. Bağlantını kontrol et.', 'error')
     }
   }
-    
+
   return (
     <div className="login-page">
       <form onSubmit={handleSubmit} className="login-form">
