@@ -13,7 +13,7 @@ namespace CollectionApp.Tests
     {
         private const int UserId = 42;
 
-        // Sahte repository: veritabanına gitmez, ne döndüreceğini testte biz söyleriz
+        // Sahte repo: veritabanına gitmez, ne döndüreceğini testte biz söyleriz
         private readonly Mock<IItemRepository> _repoMock = new();
 
         // Controller'ı, token'ında UserId = 42 olan giriş yapmış bir kullanıcıyla oluşturur

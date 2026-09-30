@@ -36,6 +36,44 @@ Kitap, dizi, film, belgesel, animasyon ve anime takibini tek yerden yapabildiği
 | Harici API'ler | TMDB, OpenLibrary |
 | Yayın | MonsterASP.NET (ücretsiz plan) |
 
+## 🛠️ Teknik Detaylar
+
+### Backend
+- **ASP.NET Core 8 Web API** + **Dapper** + **SQL Server**
+- **Repository pattern:** Bağlantı yönetimi ve Dapper yardımcı metotları ortak bir `BaseRepository` sınıfında toplandı, tüm repository'ler ondan türüyor
+- **JWT kimlik doğrulama:** Her kullanıcı yalnızca kendi verisine erişebilir, kullanıcı kimliği her zaman token'dan okunur
+- **DTO + doğrulama:** Data Annotations ve `IValidatableObject` ile kurallar (örn. bitiş tarihi başlangıçtan önce olamaz), geçersiz istekler otomatik 400 döner
+- **Global hata yönetimi:** Tüm yakalanmamış hatalar tek bir middleware'de yakalanır, `ILogger` ile loglanır, canlıda iç hata detayları kullanıcıya gösterilmez
+- **Güvenlik:** BCrypt ile şifre hash'leme, parametreli sorgular (SQL Injection koruması)
+
+### Frontend
+- **React (Vite)** + **Chart.js** (aylık aktivite, puan ve tür dağılımı grafikleri)
+- Tüm istekler tek bir `apiFetch` fonksiyonundan geçer: token'ı otomatik ekler, sunucu ve doğrulama hatalarını kullanıcıya bildirim olarak gösterir
+
+### Testler
+- **xUnit** + **Moq** ile 20 birim testi
+  - DTO doğrulama kuralları
+  - `ItemsController`: veritabanı yerine sahte (mock) repository ile, doğru kullanıcıya göre işlem yapıldığının doğrulanması
+
+```bash
+dotnet test
+```
+
+## 📁 Proje Yapısı
+
+```
+CollectionApp/
+├── CollectionApp/              # ASP.NET Core Web API
+│   ├── Controllers/
+│   ├── Dtos/
+│   ├── Middleware/
+│   ├── Models/
+│   └── Repositories/
+├── CollectionApp.Tests/        # xUnit testleri
+├── collection-app-frontend/    # React (Vite)
+└── database/schema.sql
+```
+
 ## Mimari
 
 ```

@@ -40,10 +40,9 @@ function App() {
 
   function fetchItems() {
     apiFetch('/api/Items')
-      .then(response => response.json())
-      .then(data => {
-        setItems(data)
-      })
+      // Hata gelirse listeyi bozma, boş liste kullan (toast'u apiFetch zaten gösteriyor)
+      .then(response => response.ok ? response.json() : [])
+      .then(data => setItems(data))
       .catch(error => console.error('Veri çekilirken hata oluştu:', error))
   }
 

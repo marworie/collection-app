@@ -23,3 +23,5 @@ CollectionApp/wwwroot/
 # Secrets
 .env
 .env.*
+
+appsettings.Production.json
