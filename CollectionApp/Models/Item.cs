@@ -11,7 +11,7 @@ namespace CollectionApp.Models
         public decimal? Rating { get; set; }
         public string? CoverImageUrl { get; set; }
         public string? Notes { get; set; }
-        public string? Description { get; set; }   // ← yeni, API'den gelen uzun özet
+        public string? Description { get; set; }   // API'den gelen uzuzn özet
         public DateTime CreatedDate { get; set; }
         public bool IsFavorite { get; set; }
         public DateTime? StartDate { get; set; }

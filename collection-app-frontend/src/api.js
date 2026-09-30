@@ -30,5 +30,14 @@ export async function apiFetch(url, options = {}) {
         notifyError(body?.message ?? 'Sunucuda bir hata oluştu.')
     }
 
+    // 400 + errors: DTO doğrulamasından geçemedi -> ilk hata mesajını göster
+    if (response.status === 400) {
+        const body = await response.clone().json().catch(() => null)
+        if (body?.errors) {
+            const firstError = Object.values(body.errors).flat()[0]
+            notifyError(firstError)
+        }
+    }
+
     return response
 }

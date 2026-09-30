@@ -1,9 +1,7 @@
-﻿using CollectionApp.Models;
+﻿using CollectionApp.Dtos;
 using CollectionApp.Repositories;
-using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using System.Security.Claims;
 
 // Koleksiyon öğeleri (kitap/dizi/film vs.) için CRUD işlemlerini yöneten controller
@@ -11,8 +9,8 @@ using System.Security.Claims;
 namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
-    [Authorize]   // bu controller'daki her endpoint artık geçerli bir token istiyor
+    [ApiController]   // DTO'daki kurallara uymayan istekleri otomatik 400 ile reddeder
+    [Authorize]       // bu controller'daki her endpoint geçerli bir token istiyor
     public class ItemsController : ControllerBase
     {
         private readonly ItemRepository _repository;
@@ -49,21 +47,21 @@ namespace CollectionApp.Controllers
         }
 
         // POST: api/Items — yeni bir öğe ekler
+        // Buraya gelindiyse DTO doğrulamadan geçmiş demektir
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Item item)
+        public async Task<IActionResult> Create([FromBody] ItemDto dto)
         {
-            int userId = GetUserId();
-            int newId = await _repository.AddAsync(item, userId);
-            item.Id = newId;
+            var item = dto.ToItem();
+            item.Id = await _repository.AddAsync(item, GetUserId());
 
-            return CreatedAtAction(nameof(GetById), new { id = newId }, item);
+            return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
         }
 
         // PUT: api/Items/5 — var olan bir öğeyi günceller (sadece kendi öğesiyse)
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Item item)
+        public async Task<IActionResult> Update(int id, [FromBody] ItemDto dto)
         {
-            bool updated = await _repository.UpdateAsync(id, item, GetUserId());
+            bool updated = await _repository.UpdateAsync(id, dto.ToItem(), GetUserId());
             if (!updated)
             {
                 return NotFound();

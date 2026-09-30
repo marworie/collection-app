@@ -102,6 +102,13 @@ function undoDelete(item) {
   fetchItems()
 }
 
+  // api.js'ten gelen hata olaylarını mevcut toast sistemiyle göster
+  useEffect(() => {
+    const handleApiError = (e) => showToast(e.detail, 'error')
+    window.addEventListener('api-error', handleApiError)
+    return () => window.removeEventListener('api-error', handleApiError)
+  }, [showToast])
+
   useEffect(() => {
     if (showSplash) {
       // 2 buçuk saniye sonra karşılama ekranını kapat

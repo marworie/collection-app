@@ -7,7 +7,7 @@ namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]   // bu controller'daki her endpoint artık geçerli bir token istiyor
+    [Authorize]  // bu controller'daki her endpoint geçerli bir token istiyor
     public class CustomListsController : ControllerBase
     {
         private readonly CustomListRepository _repository;
@@ -17,7 +17,7 @@ namespace CollectionApp.Controllers
             _repository = repository;
         }
 
-        // Token'ın içindeki kullanıcı id'sini okuyan küçük yardımcı
+        // Token'ın içindeki kullanıcı id'siniokuyan küçük yardımcı
         private int GetUserId()
         {
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
