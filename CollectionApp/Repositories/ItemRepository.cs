@@ -1,9 +1,10 @@
 ﻿using CollectionApp.Models;
+using CollectionApp.Repositories;
 
 namespace CollectionApp.Repositories
 {
     // Koleksiyon öğeleri için repo; bağlantı işini BaseRepository halleder
-    public class ItemRepository : BaseRepository
+    public class ItemRepository : BaseRepository, IItemRepository
     {
         public ItemRepository(IConfiguration configuration) : base(configuration) { }
 

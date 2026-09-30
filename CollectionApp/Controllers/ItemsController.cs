@@ -1,4 +1,5 @@
-﻿using CollectionApp.Dtos;
+﻿using CollectionApp.Controllers;
+using CollectionApp.Dtos;
 using CollectionApp.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,9 +14,9 @@ namespace CollectionApp.Controllers
     [Authorize]       // bu controller'daki her endpoint geçerli bir token istiyor
     public class ItemsController : ControllerBase
     {
-        private readonly ItemRepository _repository;
+        private readonly IItemRepository _repository;
 
-        public ItemsController(ItemRepository repository)
+        public ItemsController(IItemRepository repository)
         {
             _repository = repository;
         }
