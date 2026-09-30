@@ -1,57 +1,39 @@
-﻿using Dapper;
-using CollectionApp.Models;
-using Microsoft.Data.SqlClient;
+﻿using CollectionApp.Models;
 
 namespace CollectionApp.Repositories
 {
-    public class UserRepository
+    public class UserRepository : BaseRepository
     {
-        private readonly string _connectionString;
+        public UserRepository(IConfiguration configuration) : base(configuration) { }
 
-        public UserRepository(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("CollectionDB");
-        }
+        // Kullanıcı adına göre kullanıcıyı getirir, yoksa null (login için)
+        public Task<User> GetByUsernameAsync(string username) =>
+            QuerySingleOrDefaultAsync<User>(
+                "SELECT * FROM Users WHERE Username = @Username",
+                new { Username = username })!;
 
-        public async Task<User> GetByUsernameAsync(string username)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM Users WHERE Username = @Username";
-            return await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
-        }
+        // Yeni kullanıcı ekler, oluşan Id'yi döndürür
+        // user nesnesini direkt veriyoruz: Dapper @Username ve @PasswordHash'i özelliklerinden okur
+        public Task<int> AddAsync(User user) =>
+            ExecuteScalarAsync<int>(
+                @"INSERT INTO Users (Username, PasswordHash)
+                  VALUES (@Username, @PasswordHash);
+                  SELECT CAST(SCOPE_IDENTITY() AS int);",
+                user);
 
-        public async Task<int> AddAsync(User user)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"INSERT INTO Users (Username, PasswordHash)
-                           VALUES (@Username, @PasswordHash);
-                           SELECT CAST(SCOPE_IDENTITY() as int);";
-            return await connection.QuerySingleAsync<int>(sql, user);
-        }
+        public async Task<bool> UpdateUsernameAsync(int userId, string newUsername) =>
+            await ExecuteAsync(
+                "UPDATE Users SET Username = @Username WHERE Id = @Id",
+                new { Id = userId, Username = newUsername }) > 0;
 
-        public async Task<bool> UpdateUsernameAsync(int userId, string newUsername)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Users SET Username = @Username WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = userId, Username = newUsername });
-            return affectedRows > 0;
-        }
+        public async Task<bool> UpdatePasswordAsync(int userId, string newPasswordHash) =>
+            await ExecuteAsync(
+                "UPDATE Users SET PasswordHash = @PasswordHash WHERE Id = @Id",
+                new { Id = userId, PasswordHash = newPasswordHash }) > 0;
 
-        public async Task<bool> UpdatePasswordAsync(int userId, string newPasswordHash)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Users SET PasswordHash = @PasswordHash WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = userId, PasswordHash = newPasswordHash });
-            return affectedRows > 0;
-        }
-
-        // Avatar güncelleme — yeni metot
-        public async Task<bool> UpdateAvatarAsync(int userId, string avatarKey)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Users SET AvatarKey = @AvatarKey WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = userId, AvatarKey = avatarKey });
-            return affectedRows > 0;
-        }
+        public async Task<bool> UpdateAvatarAsync(int userId, string avatarKey) =>
+            await ExecuteAsync(
+                "UPDATE Users SET AvatarKey = @AvatarKey WHERE Id = @Id",
+                new { Id = userId, AvatarKey = avatarKey }) > 0;
     }
 }

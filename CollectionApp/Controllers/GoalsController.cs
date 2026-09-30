@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using CollectionApp.Repositories;
+using System.Security.Claims;
 
 namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]   // bu controller'daki her endpoint artık geçerli bir token istiyor
     public class GoalsController : ControllerBase
     {
         // Kabul edilen türler. Bunun dışında bir şey gelirse reddediyoruz
@@ -18,10 +21,16 @@ namespace CollectionApp.Controllers
             _repository = repository;
         }
 
+        // Token'ın içindeki kullanıcı id'sini okuyan küçük yardımcı
+        private int GetUserId()
+        {
+            return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var goals = await _repository.GetAllAsync();
+            var goals = await _repository.GetAllAsync(GetUserId());
             return Ok(goals);
         }
 
@@ -47,14 +56,14 @@ namespace CollectionApp.Controllers
             if (request.Target < 1 || request.Target > 1000)
                 return BadRequest(new { message = "Hedef 1 ile 1000 arasında olmalı" });
 
-            await _repository.UpsertAsync(request.Year, request.Type, request.Target);
+            await _repository.UpsertAsync(request.Year, request.Type, request.Target, GetUserId());
             return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            bool deleted = await _repository.DeleteAsync(id);
+            bool deleted = await _repository.DeleteAsync(id, GetUserId());
             if (!deleted)
             {
                 return NotFound();

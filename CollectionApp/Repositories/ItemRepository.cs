@@ -1,97 +1,102 @@
-﻿using Dapper;
-using CollectionApp.Models;
-using Microsoft.Data.SqlClient;
+﻿using CollectionApp.Models;
 
 namespace CollectionApp.Repositories
 {
-    public class ItemRepository // koleksiyon ogeleri için repo sınıfı
+    // Koleksiyon öğeleri için repo; bağlantı işini BaseRepository halleder
+    public class ItemRepository : BaseRepository
     {
-        private readonly string _connectionString; // veritabının bağlantı dizesini tutar
+        public ItemRepository(IConfiguration configuration) : base(configuration) { }
 
-        public ItemRepository(IConfiguration configuration) // yapılandırma ayarlarını alır ve bağlantı dizesini ayarlar
-        {
-            _connectionString = configuration.GetConnectionString("CollectionDB");
-        }
+        // Sadece bu kullanıcıya ait öğeler
+        public Task<IEnumerable<Item>> GetAllAsync(int userId) =>
+            QueryAsync<Item>(
+                "SELECT * FROM Items WHERE UserId = @UserId",
+                new { UserId = userId });
 
-        // Tüm öğeleri veritabanından çeker (listeleme ekranı için)
-        public async Task<IEnumerable<Item>> GetAllAsync()
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM Items";
-            return await connection.QueryAsync<Item>(sql);
-        }
+        // Tek öğe; başkasına aitse ya da yoksa null
+        public Task<Item> GetByIdAsync(int id, int userId) =>
+            QuerySingleOrDefaultAsync<Item>(
+                "SELECT * FROM Items WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId })!;
 
-        // Id'ye göre tek bir öğeyi getirir (detay/düzenleme ekranı için)
-        public async Task<Item> GetByIdAsync(int id)
+        // Yeni öğe ekler, oluşan Id'yi döndürür
+        public Task<int> AddAsync(Item item, int userId)
         {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM Items WHERE Id = @Id";
-            return await connection.QuerySingleOrDefaultAsync<Item>(sql, new { Id = id });
-        }
+            string sql = @"INSERT INTO Items (Title, Type, Status, Rating, CoverImageUrl, Notes, Description, IsFavorite, StartDate, EndDate, Genre, CreatedDate, UserId)
+                           VALUES (@Title, @Type, @Status, @Rating, @CoverImageUrl, @Notes, @Description, @IsFavorite, @StartDate, @EndDate, @Genre, GETDATE(), @UserId);
+                           SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-        // Yeni bir öğe ekler (ekleme formu için), eklenen kaydın Id'sini geri döner
-        public async Task<int> AddAsync(Item item)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"INSERT INTO Items (Title, Type, Status, Rating, CoverImageUrl, Notes, Description, IsFavorite, StartDate, EndDate, Genre, CreatedDate)
-           VALUES (@Title, @Type, @Status, @Rating, @CoverImageUrl, @Notes, @Description, @IsFavorite, @StartDate, @EndDate, @Genre, GETDATE());
-           SELECT CAST(SCOPE_IDENTITY() as int);";
-            return await connection.QuerySingleAsync<int>(sql, item);
-        }
-
-        // Var olan bir öğeyi günceller (düzenleme formu için)
-        public async Task<bool> UpdateAsync(int id, Item item)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"UPDATE Items
-           SET Title = @Title, Type = @Type, Status = @Status,
-               Rating = @Rating, CoverImageUrl = @CoverImageUrl, Notes = @Notes,
-               Description = @Description,
-               IsFavorite = @IsFavorite, StartDate = @StartDate, EndDate = @EndDate, 
-               Genre = @Genre
-           WHERE Id = @Id";
-            item.Id = id;
-            int affectedRows = await connection.ExecuteAsync(sql, item);
-            return affectedRows > 0;
-        }
-
-        // Bir öğeyi siler
-        public async Task<bool> DeleteAsync(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "DELETE FROM Items WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
-
-        // Tekrar izleme/okuma sayacını 1 artırır
-        public async Task<bool> IncrementRewatchAsync(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Items SET RewatchCount = RewatchCount + 1 WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
-
-        // Tekrar izleme/okuma sayacını 1 azaltır
-        public async Task<bool> DecrementRewatchAsync(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Items SET RewatchCount = CASE WHEN RewatchCount > 0 THEN RewatchCount - 1 ELSE 0 END WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
-
-        // Birden fazla öğenin sırasını tek seferde günceller (sürükle-bırak sonrası)
-        public async Task UpdateSortOrderAsync(List<(int Id, int SortOrder)> updates)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "UPDATE Items SET SortOrder = @SortOrder WHERE Id = @Id";
-            foreach (var update in updates)
+            return ExecuteScalarAsync<int>(sql, new
             {
-                await connection.ExecuteAsync(sql, new { Id = update.Id, SortOrder = update.SortOrder });
-            }
+                item.Title,
+                item.Type,
+                item.Status,
+                item.Rating,
+                item.CoverImageUrl,
+                item.Notes,
+                item.Description,
+                item.IsFavorite,
+                item.StartDate,
+                item.EndDate,
+                item.Genre,
+                UserId = userId
+            });
         }
 
+        // Günceller; en az bir satır değiştiyse true
+        public async Task<bool> UpdateAsync(int id, Item item, int userId)
+        {
+            string sql = @"UPDATE Items
+                           SET Title = @Title, Type = @Type, Status = @Status,
+                               Rating = @Rating, CoverImageUrl = @CoverImageUrl, Notes = @Notes,
+                               Description = @Description, IsFavorite = @IsFavorite,
+                               StartDate = @StartDate, EndDate = @EndDate, Genre = @Genre
+                           WHERE Id = @Id AND UserId = @UserId";
+
+            int affected = await ExecuteAsync(sql, new
+            {
+                item.Title,
+                item.Type,
+                item.Status,
+                item.Rating,
+                item.CoverImageUrl,
+                item.Notes,
+                item.Description,
+                item.IsFavorite,
+                item.StartDate,
+                item.EndDate,
+                item.Genre,
+                Id = id,
+                UserId = userId
+            });
+            return affected > 0;
+        }
+
+        // UserId şartı: başkasının öğesini silmeyi engeller
+        public async Task<bool> DeleteAsync(int id, int userId) =>
+            await ExecuteAsync(
+                "DELETE FROM Items WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId }) > 0;
+
+        // Tekrar sayacını 1 artırır
+        public async Task<bool> IncrementRewatchAsync(int id, int userId) =>
+            await ExecuteAsync(
+                "UPDATE Items SET RewatchCount = RewatchCount + 1 WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId }) > 0;
+
+        // Tekrar sayacını 1 azaltır, 0'ın altına düşmez
+        public async Task<bool> DecrementRewatchAsync(int id, int userId) =>
+            await ExecuteAsync(
+                @"UPDATE Items
+                  SET RewatchCount = CASE WHEN RewatchCount > 0 THEN RewatchCount - 1 ELSE 0 END
+                  WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId }) > 0;
+
+        // Sıralamayı toplu günceller.
+        // Dapper'a liste verince sorguyu her eleman için tek bağlantıda çalıştırır.
+        public Task UpdateSortOrderAsync(List<(int Id, int SortOrder)> updates, int userId) =>
+            ExecuteAsync(
+                "UPDATE Items SET SortOrder = @SortOrder WHERE Id = @Id AND UserId = @UserId",
+                updates.Select(u => new { u.Id, u.SortOrder, UserId = userId }));
     }
 }

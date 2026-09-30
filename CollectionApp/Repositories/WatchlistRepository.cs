@@ -1,40 +1,29 @@
-﻿using Dapper;
-using Microsoft.Data.SqlClient;
-using CollectionApp.Models;
+﻿using CollectionApp.Models;
 
 namespace CollectionApp.Repositories
 {
-    public class WatchlistRepository
+    public class WatchlistRepository : BaseRepository
     {
-        private readonly string _connectionString;
+        public WatchlistRepository(IConfiguration configuration) : base(configuration) { }
 
-        public WatchlistRepository(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("CollectionDB")
-                ?? throw new InvalidOperationException("Connection string bulunamadı");
-        }
+        // Sadece bu kullanıcının, bu kategorideki öğelerini getirir
+        public Task<IEnumerable<WatchlistItem>> GetByCategoryAsync(string category, int userId) =>
+            QueryAsync<WatchlistItem>(
+                "SELECT * FROM WatchlistItems WHERE Category = @Category AND UserId = @UserId ORDER BY CreatedDate DESC",
+                new { Category = category, UserId = userId });
 
-        public async Task<IEnumerable<WatchlistItem>> GetByCategoryAsync(string category)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM WatchlistItems WHERE Category = @Category ORDER BY CreatedDate DESC";
-            return await connection.QueryAsync<WatchlistItem>(sql, new { Category = category });
-        }
+        // Yeni bir öğe ekler, oluşan Id'yi döndürür
+        public Task<int> AddAsync(string title, string category, int userId) =>
+            ExecuteScalarAsync<int>(
+                @"INSERT INTO WatchlistItems (Title, Category, CreatedDate, UserId)
+                  VALUES (@Title, @Category, GETDATE(), @UserId);
+                  SELECT CAST(SCOPE_IDENTITY() AS int);",
+                new { Title = title, Category = category, UserId = userId });
 
-        public async Task<int> AddAsync(string title, string category)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"INSERT INTO WatchlistItems (Title, Category, CreatedDate)
-                           VALUES (@Title, @Category, GETDATE());
-                           SELECT CAST(SCOPE_IDENTITY() as int);";
-            return await connection.QuerySingleAsync<int>(sql, new { Title = title, Category = category });
-        }
-
-        public async Task<int> DeleteAsync(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "DELETE FROM WatchlistItems WHERE Id = @Id";
-            return await connection.ExecuteAsync(sql, new { Id = id });
-        }
+        // Bir öğeyi siler, ama sadece bu kullanıcıya aitse (etkilenen satır sayısını döndürür)
+        public Task<int> DeleteAsync(int id, int userId) =>
+            ExecuteAsync(
+                "DELETE FROM WatchlistItems WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId });
     }
 }

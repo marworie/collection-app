@@ -1,44 +1,31 @@
-﻿using Dapper;
-using Microsoft.Data.SqlClient;
-using CollectionApp.Models;
+﻿using CollectionApp.Models;
 
 namespace CollectionApp.Repositories
 {
-    public class GoalRepository
+    public class GoalRepository : BaseRepository
     {
-        private readonly string _connectionString;
+        public GoalRepository(IConfiguration configuration) : base(configuration) { }
 
-        public GoalRepository(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("CollectionDB")
-                ?? throw new InvalidOperationException("Connection string bulunamadı");
-        }
+        // Sadece bu kullanıcının hedeflerini getirir, hangi yıla ait olduğunu frontend gösteriyor
+        public Task<IEnumerable<Goal>> GetAllAsync(int userId) =>
+            QueryAsync<Goal>(
+                "SELECT * FROM Goals WHERE UserId = @UserId ORDER BY Year DESC, Type",
+                new { UserId = userId });
 
-        // Tüm hedefleri getirir hangi yıla ait olduğunu frontend gösteriyor
-        public async Task<IEnumerable<Goal>> GetAllAsync() 
+        // upsert: kayıt varsa günceller, yoksa ekler (update + insert)
+        public Task UpsertAsync(int year, string type, int target, int userId)
         {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM Goals ORDER BY Year DESC, Type";
-            return await connection.QueryAsync<Goal>(sql);
-        }
-        
-        // upsert: kayıt varsa günceller, yoksa ekler update + insert
-        public async Task UpsertAsync(int year, string type, int target)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"IF EXISTS (SELECT 1 FROM Goals WHERE Year =  @Year AND Type = @Type)
-                            UPDATE Goals SET Target = @Target WHERE Year = @Year AND Type = @Type
-                        ELSE
-                            INSERT INTO Goals (Year, Type, Target) VALUES (@Year, @Type, @Target)";
-            await connection.ExecuteAsync(sql, new { Year = year, Type = type, Target = target });
+            string sql = @"IF EXISTS (SELECT 1 FROM Goals WHERE Year = @Year AND Type = @Type AND UserId = @UserId)
+                               UPDATE Goals SET Target = @Target WHERE Year = @Year AND Type = @Type AND UserId = @UserId
+                           ELSE
+                               INSERT INTO Goals (Year, Type, Target, UserId) VALUES (@Year, @Type, @Target, @UserId)";
+            return ExecuteAsync(sql, new { Year = year, Type = type, Target = target, UserId = userId });
         }
 
-        public async Task<bool> DeleteAsync(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "DELETE FROM Goals WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = id });
-            return affectedRows > 0;
-        }
+        // Bir hedefi siler, ama sadece bu kullanıcıya aitse
+        public async Task<bool> DeleteAsync(int id, int userId) =>
+            await ExecuteAsync(
+                "DELETE FROM Goals WHERE Id = @Id AND UserId = @UserId",
+                new { Id = id, UserId = userId }) > 0;
     }
 }

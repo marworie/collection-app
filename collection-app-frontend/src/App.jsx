@@ -15,6 +15,8 @@ import { useToast } from './ToastContext'
 import CustomLists from './CustomLists'
 import LoginSplash from './LoginSplash'
 import { apiFetch } from './api'
+import FilterPanel from './FilterPanel'
+import { exportItemsToCsv } from './exportUtils'
 
 function App() {
   const [items, setItems] = useState([])
@@ -34,6 +36,7 @@ function App() {
   const pendingDeletes = useRef({}) // hangi id nin silinmesi "bekletiliyor", zamanlayıcısını burada tutuyoruz
   const searchInputRef = useRef(null)
   const [showSplash, setShowSplash] = useState(false)
+  const [filters, setFilters] = useState({ status: 'all', genre: 'all', minRating: 0 })
 
   function fetchItems() {
     apiFetch('/api/Items')
@@ -193,6 +196,23 @@ if (searchQuery.trim() !== '') {
   )
 }
 
+// Filtre paneli
+if (filters.status === 'inProgress') {
+  filteredItems = filteredItems.filter(i => i.status === 'İzliyorum' || i.status === 'Okuyorum')
+} else if (filters.status === 'done') {
+  filteredItems = filteredItems.filter(i => i.status === 'Bitti' || i.status === 'Okudum')
+} else if (filters.status === 'dropped') {
+  filteredItems = filteredItems.filter(i => i.status === 'Yarıda Bıraktım')
+}
+
+if (filters.genre !== 'all') {
+  filteredItems = filteredItems.filter(i => i.genre === filters.genre)
+}
+
+if (filters.minRating > 0) {
+  filteredItems = filteredItems.filter(i => (parseFloat(i.rating) || 0) >= filters.minRating)
+}
+
 // Sıralama
 filteredItems =[...filteredItems].sort((a, b) => {
   if (sortBy === 'rating') {
@@ -300,36 +320,46 @@ function getPageTitle() {
               </div>
             </div>
 
-            {currentView === 'all' && (
-              <>
-                <button className="suggest-btn" onClick={handleSuggest}>
-                  🎲 Ne İzlesem / Okusam?
-                </button>
-            
-              {suggestedItem && (
-                <SuggestionModal
-                  item={suggestedItem}
-                  onReroll={handleSuggest}
-                  onClose={() => setSuggestedItem(null)}
-                />
-              )}
-                <button
-                  className="toggle-add-form-btn"
-                  onClick={() => setShowAddForm(!showAddForm)}
-                >
-                  {showAddForm ? '✕ Kapat' : '➕ Koleksiyona bir öğe daha ekle'}
-                </button>
+            <div className="action-buttons-row">
+              <FilterPanel items={items} filters={filters} onChange={setFilters} />
+              <button 
+                className="export-csv-btn"
+                onClick={() => exportItemsToCsv(filteredItems)}
+              >
+                📥 CSV Olarak İndir
+              </button>
 
-                {showAddForm && (
-                  <AddItemForm
-                    onItemAdded={() => {
-                      fetchItems()
-                      setShowAddForm(false)
-                    }}
-                    currentView={currentView}
-                  />
-                )}
-              </>
+              {currentView === 'all' && (
+                <>
+                  <button className="suggest-btn" onClick={handleSuggest}>
+                    🎲 Ne İzlesem / Okusam?
+                  </button>
+                  <button
+                    className="toggle-add-form-btn"
+                    onClick={() => setShowAddForm(!showAddForm)}
+                  >
+                    {showAddForm ? '✕ Kapat' : '➕ Koleksiyona bir öğe daha ekle'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {currentView === 'all' && suggestedItem && (
+              <SuggestionModal
+                item={suggestedItem}
+                onReroll={handleSuggest}
+                onClose={() => setSuggestedItem(null)}
+              />
+            )}
+
+            {currentView === 'all' && showAddForm && (
+              <AddItemForm
+                onItemAdded={() => {
+                  fetchItems()
+                  setShowAddForm(false)
+                }}
+                currentView={currentView}
+              />
             )}
 
             {sortBy === 'manual' && searchActive && (
@@ -357,6 +387,9 @@ function getPageTitle() {
                   />
                 ))}
               </div>
+            )}
+            {filteredItems.length === 0 && (
+              <p className="no-results">Bu filtrelere uyan bir öğe bulunamadı.</p>
             )}
           </>
         )}

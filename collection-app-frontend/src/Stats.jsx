@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import GoalsSection from './GoalsSection'
 import { Bar } from 'react-chartjs-2'
+import { RatingChart, CategoryChart } from './StatsCharts'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -8,7 +10,6 @@ import {
   Tooltip
 } from 'chart.js'
 
-
 // Chart.js modüler çalışıyor: sadece kullandığımız parçaları kaydediyoruz,
 // böylece kullanılmayan kısımlar uygulamaya yüklenmiyor (dosya boyutu küçük kalıyor)
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
@@ -16,6 +17,10 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 // items: App.jsx'ten gelen tüm koleksiyon öğeleri
 // darkMode: grafiğin renklerini karanlık/açık moda göre ayarlamak için
 function Stats({ items, darkMode }) {
+
+  // Aylık grafikte hangi yılın gösterileceği ('all' = tüm yıllar)
+  // Hook'lar her zaman en üstte, erken return'den önce olmalı
+  const [chartYear, setChartYear] = useState('all')
 
   // ============ TEMEL VERİLER ============
 
@@ -53,7 +58,6 @@ function Stats({ items, darkMode }) {
   const allRatedItems = items.filter(item => item.rating)
 
   // Puanlı öğe yoksa 0'a bölme yapıp "NaN" göstermesin diye tire yazdırıyoruz
-  // toFixed(1): ondalığı tek basamağa yuvarlar (3.7333 yerine 3.7)
   const averageRating = allRatedItems.length > 0
     ? (allRatedItems.reduce((sum, item) => sum + parseFloat(item.rating), 0) / allRatedItems.length).toFixed(1)
     : '–'
@@ -61,12 +65,10 @@ function Stats({ items, darkMode }) {
   const favoriteCount = items.filter(item => item.isFavorite).length
 
   // Tüm öğelerdeki "Tekrar İzledim/Okudum" sayaçlarının toplamı
-  // (|| 0: sayaç boş gelirse toplamı bozmasın)
   const totalRewatches = items.reduce((sum, item) => sum + (item.rewatchCount || 0), 0)
 
   // ============ TÜR DAĞILIMI ============
 
-  // Her tür için sayı + yüzde hesaplayıp, en çoktan aza sıralıyoruz
   const typeDistribution = Object.keys(typeCounts).map(type => ({
     type,
     count: typeCounts[type],
@@ -75,12 +77,10 @@ function Stats({ items, darkMode }) {
 
   // ============ ÖNE ÇIKANLAR ============
 
-  // En yüksek puanlı öğe (reduce ile her adımda daha yüksek olanı tutuyoruz)
   const highestRated = ratedItems.length > 0
     ? ratedItems.reduce((max, item) => item.rating > max.rating ? item : max, ratedItems[0])
     : null
 
-  // En uzun yorumu olan öğe
   const itemsWithNotes = finishedItems.filter(item => item.notes)
   const longestNote = itemsWithNotes.length > 0
     ? itemsWithNotes.reduce((longest, item) =>
@@ -90,7 +90,7 @@ function Stats({ items, darkMode }) {
 
   // ============ YIL → AY → ÖĞELER GRUPLAMASI ============
 
-  // Sonuç şuna benzer: { 2026: { Eylül: [öğe, öğe], Ağustos: [öğe] }, 2021: {...} }
+  // Sonuç: { 2026: { Eylül: [öğe, öğe], Ağustos: [öğe] }, 2021: {...} }
   const grouped = {}
   finishedItems.forEach(item => {
     const date = new Date(item.endDate)
@@ -102,26 +102,22 @@ function Stats({ items, darkMode }) {
     grouped[year][month].push(item)
   })
 
-  // Yıllar yeniden eskiye sıralı (2026, 2021 gibi)
+  // Yıllar yeniden eskiye sıralı
   const years = Object.keys(grouped).sort((a, b) => b - a)
 
   // "2026 yılında 3 anime izledin, 6 kitap okudun ve ..." cümlesini üretir
   function getYearSummary(year) {
-    const yearItems = grouped[year]
-    const allItemsInYear = Object.values(yearItems).flat()
+    const allItemsInYear = Object.values(grouped[year]).flat()
 
     const counts = {}
     allItemsInYear.forEach(item => {
       counts[item.type] = (counts[item.type] || 0) + 1
     })
 
-    const parts = Object.keys(counts).map(type => {
-      const count = counts[type]
-      const label = type.toLowerCase()
-      return `${count} ${label} ${getVerb(type)}`
-    })
+    const parts = Object.keys(counts).map(type =>
+      `${counts[type]} ${type.toLowerCase()} ${getVerb(type)}`
+    )
 
-    // Tek tür varsa "ve" gerekmiyor, birden fazlaysa sonuncuyu "ve" ile bağlıyoruz
     if (parts.length === 1) {
       return `${year} yılında ${parts[0]}!`
     }
@@ -132,47 +128,49 @@ function Stats({ items, darkMode }) {
 
   // ============ AYLIK AKTİVİTE GRAFİĞİ İÇİN VERİ ============
 
-  // Gruplanmış veriyi düz bir listeye çeviriyoruz (grafik düz liste istiyor)
   const chartEntries = []
   Object.keys(grouped).forEach(year => {
     Object.keys(grouped[year]).forEach(month => {
-      const monthIndex = monthNames.indexOf(month)
       chartEntries.push({
         year: parseInt(year),
-        monthIndex,
-        label: `${month.slice(0, 3)} ${year}`, // örn. "Eyl 2026"
+        monthIndex: monthNames.indexOf(month),
+        month,
         count: grouped[year][month].length
       })
     })
   })
-  // Kronolojik sıra: önce yıla, sonra aya göre (eskiden yeniye)
   chartEntries.sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex)
 
+  // Seçilen yıla göre süz
+  const visibleEntries = chartYear === 'all'
+    ? chartEntries
+    : chartEntries.filter(e => e.year === Number(chartYear))
+
   const chartData = {
-    labels: chartEntries.map(e => e.label),
+    // Tek yıl seçiliyse etikette yıl tekrar etmesin: "Eyl" yeterli
+    labels: visibleEntries.map(e =>
+      chartYear === 'all' ? `${e.month.slice(0, 3)} ${e.year}` : e.month.slice(0, 3)
+    ),
     datasets: [
       {
         label: 'Bitirilen öğe sayısı',
-        data: chartEntries.map(e => e.count),
+        data: visibleEntries.map(e => e.count),
         backgroundColor: '#7b2ff7',
-        hoverBackgroundColor: '#f107a3', // üzerine gelince pembe olsun
+        hoverBackgroundColor: '#f107a3',
         borderRadius: 6,
         maxBarThickness: 40
       }
     ]
   }
 
-  // Grafiğin çizgi ve yazı renkleri, temaya göre değişiyor
   const gridColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
   const textColor = darkMode ? '#b0b0c0' : '#666'
 
   const chartOptions = {
     responsive: true,
-    // false: grafik kendi en/boy oranını dayatmasın, bulunduğu kutunun
-    // yüksekliğine (CSS'teki .stats-chart-wrap, 280px) uysun
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false }, // tek veri serisi var, açıklama kutusuna gerek yok
+      legend: { display: false },
       tooltip: {
         backgroundColor: darkMode ? '#26263f' : '#fff',
         titleColor: darkMode ? '#f0e6fc' : '#333',
@@ -188,7 +186,7 @@ function Stats({ items, darkMode }) {
       },
       y: {
         beginAtZero: true,
-        ticks: { color: textColor, stepSize: 1 }, // sadece tam sayılar (1, 2, 3...)
+        ticks: { color: textColor, stepSize: 1 },
         grid: { color: gridColor }
       }
     }
@@ -196,7 +194,6 @@ function Stats({ items, darkMode }) {
 
   // ============ BOŞ DURUM ============
 
-  // Hiç bitirilmiş öğe yoksa, boş kutular yerine kısa bir mesaj göster
   if (totalFinished === 0) {
     return (
       <div className="stats-page">
@@ -212,11 +209,9 @@ function Stats({ items, darkMode }) {
     <div className="stats-page">
       <h2>📊 İstatistiklerim</h2>
 
-      {/* Tüm bölümler bu ızgaranın (grid) içinde diziliyor.
-          stats-wide: tam genişlik kaplayan bölüm, sınıfı olmayanlar yarım genişlikte */}
       <div className="stats-grid">
 
-        {/* ÖZET KUTULARI: 4 küçük kart yan yana */}
+        {/* ÖZET KUTULARI */}
         <div className="stats-kpi-row stats-wide">
           <div className="kpi-card">
             <span className="kpi-icon">✅</span>
@@ -239,8 +234,9 @@ function Stats({ items, darkMode }) {
             <span className="kpi-label">Tekrar</span>
           </div>
         </div>
-        
+
         <GoalsSection items={items} />
+
         {/* YIL ÖZET CÜMLELERİ */}
         <div className="stats-section stats-wide">
           {years.map(year => (
@@ -250,22 +246,47 @@ function Stats({ items, darkMode }) {
           ))}
         </div>
 
-        {/* AYLIK AKTİVİTE GRAFİĞİ */}
+        {/* AYLIK AKTİVİTE GRAFİĞİ + YIL FİLTRESİ */}
         <div className="stats-section stats-wide">
-          <h3>📈 Aylık Aktivite</h3>
+          <div className="stats-section-header">
+            <h3>📈 Aylık Aktivite</h3>
+            <select
+              className="year-select"
+              value={chartYear}
+              onChange={(e) => setChartYear(e.target.value)}
+            >
+              <option value="all">Tüm yıllar</option>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
           <div className="stats-chart-wrap">
             <Bar data={chartData} options={chartOptions} />
           </div>
         </div>
 
-        {/* TÜR DAĞILIMI (yarım genişlik, sağındaki kutuyla yan yana) */}
+        {/* PUAN DAĞILIMI (yarım genişlik) */}
         <div className="stats-section">
-          <h3>📊 Tür Dağılımı</h3>
+          <h3>⭐ Puan Dağılımı</h3>
+          <div className="stats-chart-wrap">
+            <RatingChart items={allRatedItems} darkMode={darkMode} />
+          </div>
+        </div>
+
+        {/* TÜR DAĞILIMI HALKA (yarım genişlik) */}
+        <div className="stats-section">
+          <h3>🍩 Tür Dağılımı</h3>
+          <div className="stats-chart-wrap">
+            <CategoryChart items={finishedItems} darkMode={darkMode} />
+          </div>
+        </div>
+
+        {/* TÜR DAĞILIMI ÇUBUKLAR (yarım genişlik) */}
+        <div className="stats-section">
+          <h3>📊 Tür Yüzdeleri</h3>
           {typeDistribution.map(t => (
             <div key={t.type} className="distribution-row">
               <span className="distribution-label">{typeIcons[t.type]} {t.type}</span>
               <div className="distribution-bar-track">
-                {/* çubuğun dolu kısmının genişliği, yüzdeye göre */}
                 <div
                   className="distribution-bar-fill"
                   style={{ width: `${t.percentage}%` }}
@@ -280,7 +301,6 @@ function Stats({ items, darkMode }) {
         <div className="stats-section">
           <h3>🏆 Öne Çıkanlar</h3>
           <div className="highlights">
-            {/* && : öğe varsa göster, yoksa hiç çizme */}
             {highestRated && (
               <div className="highlight-card">
                 <span className="highlight-title">En Yüksek Puan</span>
@@ -300,14 +320,12 @@ function Stats({ items, darkMode }) {
           </div>
         </div>
 
-        {/* ZAMAN ÇİZELGESİ (tam genişlik) */}
+        {/* ZAMAN ÇİZELGESİ */}
         <div className="stats-section stats-wide">
           <h3>🗓️ Zaman Çizelgesi</h3>
           {years.map(year => (
             <div key={year} className="stats-year">
               <h3 className="year-title">{year}</h3>
-
-              {/* Aylar da kendi içinde ızgara: sığdığı kadar yan yana dizilsin */}
               <div className="stats-months-grid">
                 {Object.keys(grouped[year]).map(month => (
                   <div key={month} className="stats-month">

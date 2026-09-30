@@ -1,84 +1,65 @@
-﻿using Dapper;
-using Microsoft.Data.SqlClient;
-using CollectionApp.Models;
+﻿using CollectionApp.Models;
 
 namespace CollectionApp.Repositories
 {
-    public class CustomListRepository
+    public class CustomListRepository : BaseRepository
     {
-        private readonly string _connectionString;
+        public CustomListRepository(IConfiguration configuration) : base(configuration) { }
 
-        public CustomListRepository(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("CollectionDB")
-                ?? throw new InvalidOperationException("Connection string bulunamadı");
-        }
+        // Sadece bu kullanıcının listelerini getirir
+        public Task<IEnumerable<CustomList>> GetAllListsAsync(int userId) =>
+            QueryAsync<CustomList>(
+                "SELECT * FROM CustomLists WHERE UserId = @UserId ORDER BY CreatedDate DESC",
+                new { UserId = userId });
 
-        // Tüm listeleri getirir
-        public async Task<IEnumerable<CustomList>> GetAllListsAsync()
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT * FROM CustomLists ORDER BY CreatedDate DESC";
-            return await connection.QueryAsync<CustomList>(sql);
-        }
+        // Yeni bir liste oluşturur, oluşan Id'yi döndürür
+        public Task<int> CreateListAsync(string name, string icon, int userId) =>
+            ExecuteScalarAsync<int>(
+                @"INSERT INTO CustomLists (Name, Icon, CreatedDate, UserId)
+                  VALUES (@Name, @Icon, GETDATE(), @UserId);
+                  SELECT CAST(SCOPE_IDENTITY() AS int);",
+                new { Name = name, Icon = icon, UserId = userId });
 
-        // Yeni bir liste oluşturur
-        public async Task<int> CreateListAsync(string name, string icon)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"INSERT INTO CustomLists (Name, Icon, CreatedDate)
-                           VALUES (@Name, @Icon, GETDATE());
-                           SELECT CAST(SCOPE_IDENTITY() as int);";
-            return await connection.QuerySingleAsync<int>(sql, new { Name = name, Icon = icon });
-        }
+        // Bir listeyi siler, ama sadece bu kullanıcıya aitse
+        public async Task<bool> DeleteListAsync(int listId, int userId) =>
+            await ExecuteAsync(
+                "DELETE FROM CustomLists WHERE Id = @Id AND UserId = @UserId",
+                new { Id = listId, UserId = userId }) > 0;
 
-        // Bir listeyi (ve içindeki tüm ilişkileri, CASCADE sayesinde) siler
-        public async Task<bool> DeleteListAsync(int listId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "DELETE FROM CustomLists WHERE Id = @Id";
-            int affectedRows = await connection.ExecuteAsync(sql, new { Id = listId });
-            return affectedRows > 0;
-        }
+        // Bir listedeki tüm öğeleri getirir, ama sadece liste bu kullanıcıya aitse
+        public Task<IEnumerable<Item>> GetItemsInListAsync(int listId, int userId) =>
+            QueryAsync<Item>(
+                @"SELECT i.* FROM Items i
+                  INNER JOIN CustomListItems cli ON i.Id = cli.ItemId
+                  INNER JOIN CustomLists cl ON cli.ListId = cl.Id
+                  WHERE cli.ListId = @ListId AND cl.UserId = @UserId",
+                new { ListId = listId, UserId = userId });
 
-        // Bir listedeki tüm öğeleri getirir (Items ile CustomListItems'ı birleştiriyoruz)
-        public async Task<IEnumerable<Item>> GetItemsInListAsync(int listId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = @"SELECT i.* FROM Items i
-                           INNER JOIN CustomListItems cli ON i.Id = cli.ItemId
-                           WHERE cli.ListId = @ListId";
-            return await connection.QueryAsync<Item>(sql, new { ListId = listId });
-        }
+        // Öğeyi listeye ekler. Tek sorguda üç kontrol:
+        // liste bu kullanıcının mı, öğe bu kullanıcının mı, öğe zaten listede mi
+        public Task AddItemToListAsync(int listId, int itemId, int userId) =>
+            ExecuteAsync(
+                @"INSERT INTO CustomListItems (ListId, ItemId)
+                  SELECT @ListId, @ItemId
+                  WHERE EXISTS (SELECT 1 FROM CustomLists WHERE Id = @ListId AND UserId = @UserId)
+                    AND EXISTS (SELECT 1 FROM Items WHERE Id = @ItemId AND UserId = @UserId)
+                    AND NOT EXISTS (SELECT 1 FROM CustomListItems WHERE ListId = @ListId AND ItemId = @ItemId)",
+                new { ListId = listId, ItemId = itemId, UserId = userId });
 
-        // Bir öğeyi bir listeye ekler (zaten ekliyse tekrar eklemez)
-        public async Task AddItemToListAsync(int listId, int itemId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string checkSql = "SELECT COUNT(*) FROM CustomListItems WHERE ListId = @ListId AND ItemId = @ItemId";
-            int existing = await connection.QuerySingleAsync<int>(checkSql, new { ListId = listId, ItemId = itemId });
+        // Bir öğeyi bir listeden çıkarır, ama sadece liste bu kullanıcıya aitse
+        public Task RemoveItemFromListAsync(int listId, int itemId, int userId) =>
+            ExecuteAsync(
+                @"DELETE cli FROM CustomListItems cli
+                  INNER JOIN CustomLists cl ON cli.ListId = cl.Id
+                  WHERE cli.ListId = @ListId AND cli.ItemId = @ItemId AND cl.UserId = @UserId",
+                new { ListId = listId, ItemId = itemId, UserId = userId });
 
-            if (existing == 0)
-            {
-                string insertSql = "INSERT INTO CustomListItems (ListId, ItemId) VALUES (@ListId, @ItemId)";
-                await connection.ExecuteAsync(insertSql, new { ListId = listId, ItemId = itemId });
-            }
-        }
-
-        // Bir öğeyi bir listeden çıkarır
-        public async Task RemoveItemFromListAsync(int listId, int itemId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "DELETE FROM CustomListItems WHERE ListId = @ListId AND ItemId = @ItemId";
-            await connection.ExecuteAsync(sql, new { ListId = listId, ItemId = itemId });
-        }
-
-        // Bir öğenin hangi listelerde olduğunu getirir (kart üzerindeki "+ Listeye Ekle" menüsü için)
-        public async Task<IEnumerable<int>> GetListIdsForItemAsync(int itemId)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            string sql = "SELECT ListId FROM CustomListItems WHERE ItemId = @ItemId";
-            return await connection.QueryAsync<int>(sql, new { ItemId = itemId });
-        }
+        // Bir öğenin, bu kullanıcıya ait hangi listelerde olduğunu getirir
+        public Task<IEnumerable<int>> GetListIdsForItemAsync(int itemId, int userId) =>
+            QueryAsync<int>(
+                @"SELECT cli.ListId FROM CustomListItems cli
+                  INNER JOIN CustomLists cl ON cli.ListId = cl.Id
+                  WHERE cli.ItemId = @ItemId AND cl.UserId = @UserId",
+                new { ItemId = itemId, UserId = userId });
     }
 }
