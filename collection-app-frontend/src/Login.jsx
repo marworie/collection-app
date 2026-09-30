@@ -19,7 +19,7 @@ function Login({ onLoginSuccess }) {
       const response = await fetch(`/api/Auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passwordHash: password })
+        body: JSON.stringify({ username, password})
       })
 
       // Gövde boş gelirse (örn. bazı 401'ler) json() patlamasın
@@ -37,7 +37,9 @@ function Login({ onLoginSuccess }) {
           showToast(`Hoş geldin, ${data.username}!`)
         }
       } else {
-        showToast(data.message || 'Bir hata oluştu', 'error')
+        // Doğrulama hatası (400) → errors içindeki ilk mesaj, diğer hatalar → message
+        const firstError = data.errors ? Object.values(data.errors).flat()[0] : null
+        showToast(firstError || data.message || 'Bir hata oluştu', 'error')
       }
     } catch {
       // Sunucuya hiç ulaşılamadı

@@ -35,5 +35,11 @@ namespace CollectionApp.Repositories
             await ExecuteAsync(
                 "UPDATE Users SET AvatarKey = @AvatarKey WHERE Id = @Id",
                 new { Id = userId, AvatarKey = avatarKey }) > 0;
+
+        // Id'ye göre kullanıcıyı getirir (token'dan gelen Id ile)
+        public Task<User> GetByIdAsync(int id) =>
+            QuerySingleOrDefaultAsync<User>(
+                "SELECT * FROM Users WHERE Id = @Id",
+                new { Id = id })!;
     }
 }

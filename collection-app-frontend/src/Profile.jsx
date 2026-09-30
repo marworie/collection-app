@@ -4,7 +4,6 @@ import AvatarIcon, { AVATAR_OPTIONS } from './AvatarIcon'
 import { apiFetch } from './api'
 
 function Profile() {
-  const currentUsername = localStorage.getItem('loggedInUser')
   const showToast = useToast()
 
   const [isEditing, setIsEditing] = useState(false)
@@ -25,14 +24,14 @@ function Profile() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        currentUsername: currentUsername,
         newUsername: newUsername || null,
         newPassword: newPassword || null,
         newAvatarKey: selectedAvatarKey
       })
     })
 
-    const data = await response.json()
+    // Gövde boş gelirse json() patlamasın
+    const data = await response.json().catch(() => ({}))
 
     if (response.ok) {
       localStorage.setItem('loggedInUser', data.username)
@@ -42,7 +41,9 @@ function Profile() {
       setNewUsername('')
       setNewPassword('')
       showToast('Profil güncellendi!')
-    } else {
+    } else if (!data.errors && response.status < 500) {
+      // Doğrulama (errors) ve sunucu (500) hatalarını apiFetch zaten gösteriyor,
+      // burada sadece "kullanıcı adı alınmış" gibi özel mesajları gösteriyoruz
       showToast(data.message || 'Bir hata oluştu', 'error')
     }
   }

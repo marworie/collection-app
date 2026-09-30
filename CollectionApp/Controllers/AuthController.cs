@@ -1,5 +1,7 @@
-﻿using CollectionApp.Models;
+﻿using CollectionApp.Dtos;
+using CollectionApp.Models;
 using CollectionApp.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -24,75 +26,81 @@ namespace CollectionApp.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             // aynı kullanıcı adı alınmış mı kontrol et
-            var existing = await _userRepository.GetByUsernameAsync(user.Username);
+            var existing = await _userRepository.GetByUsernameAsync(dto.Username);
             if (existing != null)
             {
                 return BadRequest(new { message = "Bu kullanıcı adı zaten alınmış" });
             }
 
-            // şifreyi hash'liyoruz, düz metin saklamıyoruz
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+            var user = new User
+            {
+                Username = dto.Username.Trim(),
+                // şifreyi hash'liyoruz, düz metin saklamıyoruz
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
+            };
 
             int newId = await _userRepository.AddAsync(user);
             return Ok(new { message = "Kullanıcı oluşturuldu", id = newId });
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] User loginRequest)
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var user = await _userRepository.GetByUsernameAsync(loginRequest.Username);
+            var user = await _userRepository.GetByUsernameAsync(dto.Username);
 
-            if (user == null)
+            // Kullanıcı yoksa da şifre yanlışsa da aynı mesaj:
+            // saldırgan hangi kullanıcı adlarının var olduğunu öğrenemesin
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             {
                 return Unauthorized(new { message = "Kullanıcı adı veya şifre hatalı" });
             }
 
-            // girilen düz şifreyi, veritabanındaki hash ile karşılaştırıyoruz
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(loginRequest.PasswordHash, user.PasswordHash);
-
-            if (!isPasswordValid)
-            {
-                return Unauthorized(new { message = "Kullanıcı adı veya şifre hatalı" });
-            }
-
-            // avatarKey'i de cevaba ekliyoruz ki frontend localStorage'a kaydedebilsin
             string token = GenerateJwtToken(user);
-            return Ok(new { message = "Giriş başarılı", username = user.Username, avatarKey = user.AvatarKey, token = token });
+            return Ok(new { message = "Giriş başarılı", username = user.Username, avatarKey = user.AvatarKey, token });
         }
 
+        // Artık sadece giriş yapmış kullanıcı, sadece KENDİ profilini güncelleyebilir
+        [Authorize]
         [HttpPut("update-profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
         {
-            var user = await _userRepository.GetByUsernameAsync(request.CurrentUsername);
+            // Kim olduğunu body'den değil token'dan okuyoruz → başkası adına işlem yapılamaz
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var user = await _userRepository.GetByIdAsync(userId);
 
             if (user == null)
             {
                 return NotFound(new { message = "Kullanıcı bulunamadı" });
             }
 
-            // her alan (kullanıcı adı/şifre/avatar) sadece gönderilmişse güncelleniyor
-            if (!string.IsNullOrWhiteSpace(request.NewUsername) && request.NewUsername != user.Username)
+            if (!string.IsNullOrWhiteSpace(dto.NewUsername) && dto.NewUsername != user.Username)
             {
-                await _userRepository.UpdateUsernameAsync(user.Id, request.NewUsername);
+                // yeni kullanıcı adı başkasında var mı
+                var taken = await _userRepository.GetByUsernameAsync(dto.NewUsername);
+                if (taken != null)
+                {
+                    return BadRequest(new { message = "Bu kullanıcı adı zaten alınmış" });
+                }
+                await _userRepository.UpdateUsernameAsync(user.Id, dto.NewUsername.Trim());
             }
 
-            if (!string.IsNullOrWhiteSpace(request.NewPassword))
+            if (!string.IsNullOrWhiteSpace(dto.NewPassword))
             {
-                string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
                 await _userRepository.UpdatePasswordAsync(user.Id, newHashedPassword);
             }
 
-            if (!string.IsNullOrWhiteSpace(request.NewAvatarKey))
+            if (!string.IsNullOrWhiteSpace(dto.NewAvatarKey))
             {
-                await _userRepository.UpdateAvatarAsync(user.Id, request.NewAvatarKey);
+                await _userRepository.UpdateAvatarAsync(user.Id, dto.NewAvatarKey);
             }
 
-            // yeni değer gelmemişse, eski değeri koruyup öyle döndürüyoruz
-            string finalUsername = !string.IsNullOrWhiteSpace(request.NewUsername) ? request.NewUsername : user.Username;
-            string finalAvatarKey = !string.IsNullOrWhiteSpace(request.NewAvatarKey) ? request.NewAvatarKey : user.AvatarKey;
+            // yeni değer gelmemişse eski değeri döndürüyoruz
+            string finalUsername = !string.IsNullOrWhiteSpace(dto.NewUsername) ? dto.NewUsername : user.Username;
+            string finalAvatarKey = !string.IsNullOrWhiteSpace(dto.NewAvatarKey) ? dto.NewAvatarKey : user.AvatarKey;
 
             return Ok(new { message = "Profil güncellendi", username = finalUsername, avatarKey = finalAvatarKey });
         }
