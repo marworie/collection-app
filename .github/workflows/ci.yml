@@ -1,0 +1,28 @@
+# Her push'ta ve pull request'te backend testlerini çalıştırır
+name: Testler
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest   # GitHub'ın verdiği temiz bir Linux makine
+
+    steps:
+      # 1. Repo'daki kodu makineye indir
+      - uses: actions/checkout@v4
+
+      # 2. .NET'i kur (backend 8, test projesi daha yeni bir sürümle oluşturulmuş olabilir)
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      # 3. Testleri çalıştır, biri bile kırmızıysa iş başarısız olur
+      - name: Testleri çalıştır
+        run: dotnet test CollectionApp.Tests/CollectionApp.Tests.csproj --verbosity normal

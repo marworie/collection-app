@@ -17,6 +17,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<CustomListRepository>();
 builder.Services.AddScoped<GoalRepository>();
+builder.Services.AddMemoryCache();
 
 // JWT ayarları: tokenları kim üretti, kim doğrulayacak, imza anahtarı ne
 var jwtSecret = builder.Configuration["JwtSecret"]

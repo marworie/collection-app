@@ -1,21 +1,36 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 
-// TMDB (film/dizi/anime) ve OpenLibrary (kitap) API'lerinden kapak+özet çeken controller
+// TMDB (film/dizi/anime) ve OpenLibrary (kitap) API'lerinden kapak+özet çeken controller.
+// Aynı arama tekrar yapılırsa sonuç dış API yerine sunucu hafızasından (önbellek) gelir.
 
 namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]   // sadece giriş yapmış kullanıcılar arama yapabilsin (TMDB anahtarımız korunsun)
     public class SearchController : ControllerBase
     {
+        // Önbellekteki sonuçlar bu süre sonunda silinir, sonraki aramada taze veri gelir
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(12);
+
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration; // appsettings.json'daki TmdbApiKey'e erişmek için
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<SearchController> _logger;
 
-        public SearchController(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public SearchController(
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
+            IMemoryCache cache,
+            ILogger<SearchController> logger)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _cache = cache;
+            _logger = logger;
         }
 
         // Frontend'e dönecek sonuçların ortak şekli (hem film hem kitap için)
@@ -31,19 +46,73 @@ namespace CollectionApp.Controllers
         [HttpGet("movie")]
         public async Task<IActionResult> SearchMovie([FromQuery] string query)
         {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest(new { message = "Arama metni boş olamaz." });
+
+            // "Dune", " dune " ve "DUNE" aynı arama sayılsın diye anahtarı normalize ediyoruz
+            string cacheKey = $"search:movie:{query.Trim().ToLowerInvariant()}";
+
+            if (_cache.TryGetValue(cacheKey, out List<SearchResult>? cached))
+            {
+                _logger.LogInformation("Önbellekten geldi: {Key}", cacheKey);
+                return Ok(cached);
+            }
+
+            var results = await FetchMoviesAsync(query);
+            if (results == null)
+                return StatusCode(502, new { message = "Film arama servisine şu an ulaşılamıyor." });
+
+            _cache.Set(cacheKey, results, CacheDuration);
+            _logger.LogInformation("TMDB'den geldi ve önbelleğe alındı: {Key}", cacheKey);
+            return Ok(results);
+        }
+
+        // Kitap araması için OpenLibrary kullanıyoruz (anahtar gerekmiyor)
+        [HttpGet("book")]
+        public async Task<IActionResult> SearchBook([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest(new { message = "Arama metni boş olamaz." });
+
+            string cacheKey = $"search:book:{query.Trim().ToLowerInvariant()}";
+
+            if (_cache.TryGetValue(cacheKey, out List<SearchResult>? cached))
+            {
+                _logger.LogInformation("Önbellekten geldi: {Key}", cacheKey);
+                return Ok(cached);
+            }
+
+            var results = await FetchBooksAsync(query);
+            if (results == null)
+                return StatusCode(502, new { message = "Kitap arama servisine şu an ulaşılamıyor." });
+
+            _cache.Set(cacheKey, results, CacheDuration);
+            _logger.LogInformation("OpenLibrary'den geldi ve önbelleğe alındı: {Key}", cacheKey);
+            return Ok(results);
+        }
+
+        // TMDB'ye istek atar. Servis hata verirse null döner (hatalı cevap önbelleğe alınmasın diye)
+        private async Task<List<SearchResult>?> FetchMoviesAsync(string query)
+        {
             var apiKey = _configuration["TmdbApiKey"];
             var client = _httpClientFactory.CreateClient();
             var url = $"https://api.themoviedb.org/3/search/multi?api_key={apiKey}&query={Uri.EscapeDataString(query)}&language=tr-TR";
 
             var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB hata döndü: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json); // TMDB'nin ham JSON cevabını ayrıştırıyoruz
+            using var doc = JsonDocument.Parse(json); // TMDB'nin ham JSON cevabını ayrıştırıyoruz
 
             var results = new List<SearchResult>();
             foreach (var item in doc.RootElement.GetProperty("results").EnumerateArray())
             {
                 var mediaType = item.GetProperty("media_type").GetString();
-                if (mediaType != "movie" && mediaType != "tv") continue; // sadece film/dizi sonuçlarını al, kişi/diğer sonuçları atla
+                if (mediaType != "movie" && mediaType != "tv") continue; // sadece film/dizi sonuçlarını al
 
                 // film ve dizide başlık alanının adı farklı (title vs name)
                 string title = mediaType == "movie"
@@ -75,19 +144,24 @@ namespace CollectionApp.Controllers
                 if (results.Count >= 8) break; // en fazla 8 sonuç döndür
             }
 
-            return Ok(results);
+            return results;
         }
 
-        // Kitap araması için OpenLibrary kullanıyoruz (anahtar gerekmiyor)
-        [HttpGet("book")]
-        public async Task<IActionResult> SearchBook([FromQuery] string query)
+        // OpenLibrary'ye istek atar. Servis hata verirse null döner
+        private async Task<List<SearchResult>?> FetchBooksAsync(string query)
         {
             var client = _httpClientFactory.CreateClient();
             var url = $"https://openlibrary.org/search.json?q={Uri.EscapeDataString(query)}&limit=8";
 
             var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("OpenLibrary hata döndü: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
 
             var results = new List<SearchResult>();
             foreach (var item in doc.RootElement.GetProperty("docs").EnumerateArray())
@@ -115,14 +189,14 @@ namespace CollectionApp.Controllers
                     Year = year,
                     // kapak görseli, cover Id üzerinden ayrı bir URL kalıbıyla oluşturuluyor
                     ImageUrl = coverId != null ? $"https://covers.openlibrary.org/b/id/{coverId}-M.jpg" : null,
-                    // kitapta "özet" alanı olmadığı için, yazar bilgisini description gibi kullanıyoruz
+                    // kitapta "özet" alanı olmadığı için yazar bilgisini description gibi kullanıyoruz
                     Description = author != null ? $"Yazar: {author}" : null
                 });
 
                 if (results.Count >= 8) break;
             }
 
-            return Ok(results);
+            return results;
         }
     }
 }
