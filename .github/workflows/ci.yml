@@ -10,11 +10,13 @@ on:
 jobs:
   # ============ 1. TEST ============
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # GitHub'ın verdiği temiz bir Linux makine
 
     steps:
+      # Repo'daki kodu makineye indir
       - uses: actions/checkout@v4
 
+      # .NET'i kur (backend 8, test projesi daha yeni bir sürümle oluşturulmuş olabilir)
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
@@ -22,6 +24,7 @@ jobs:
             9.0.x
             10.0.x
 
+      # Testleri çalıştır, biri bile kırmızıysa iş başarısız olur
       - name: Testleri çalıştır
         run: dotnet test CollectionApp.Tests/CollectionApp.Tests.csproj --verbosity normal
 
@@ -65,8 +68,8 @@ jobs:
       - name: Üretim ayarlarını yaz
         shell: pwsh
         env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWTSECRET }}
+          TMDB_API_KEY: ${{ secrets.TMDBAPIKEY }}
           DB_CONNECTION: ${{ secrets.DB_CONNECTION }}
         run: |
           $settings = @{
@@ -80,10 +83,10 @@ jobs:
       - name: MonsterASP'a yükle
         shell: pwsh
         env:
-          WEBDEPLOY_URL: ${{ secrets.WEBDEPLOY_URL }}
-          WEBDEPLOY_SITE: ${{ secrets.WEBDEPLOY_SITE }}
-          WEBDEPLOY_USERNAME: ${{ secrets.WEBDEPLOY_USERNAME }}
-          WEBDEPLOY_PASSWORD: ${{ secrets.WEBDEPLOY_PASSWORD }}
+          PUBLISH_URL: ${{ secrets.PUBLISHURL }}
+          SITE: ${{ secrets.MSDEPLOYSITE }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.USERPWD }}
         run: |
           # msdeploy makinede yoksa kur
           $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
@@ -91,11 +94,20 @@ jobs:
             choco install webdeploy -y --no-progress
           }
 
+          # PUBLISHURL sadece "site123.siteasp.net" ise tam WebDeploy adresine çevir
+          $url = $env:PUBLISH_URL.Trim()
+          if ($url -notmatch '^https://') { $url = "https://$url" }
+          if ($url -notmatch 'msdeploy\.axd') {
+            $url = ($url.TrimEnd('/') -replace ':8172$', '') + ":8172/msdeploy.axd?site=$($env:SITE)"
+          }
+
           $source = (Resolve-Path publish).Path
 
+          # AppOffline: yükleme sırasında siteyi kısa süre "bakımda" moduna alır (kilitli dosya sorunu olmasın)
+          # DoNotDeleteRule: sunucuda olup pakette olmayan dosyaları (loglar gibi) silmez
           & $msdeploy -verb:sync `
             "-source:contentPath=$source" `
-            "-dest:contentPath=$env:WEBDEPLOY_SITE,computerName=$env:WEBDEPLOY_URL,userName=$env:WEBDEPLOY_USERNAME,password=$env:WEBDEPLOY_PASSWORD,authType=Basic" `
+            "-dest:contentPath=$env:SITE,computerName=$url,userName=$env:USERNAME,password=$env:PASSWORD,authType=Basic" `
             -allowUntrusted `
             -enableRule:AppOffline `
             -enableRule:DoNotDeleteRule
