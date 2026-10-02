@@ -120,5 +120,43 @@ namespace CollectionApp.Tests
 
             Assert.Contains(Validate(dto), r => r.ErrorMessage == "Şifre en az 6 karakter olmalı.");
         }
+        // ============ WatchlistItemDto ============
+
+        [Fact]
+        public void WatchlistItemDto_BosBaslik_Gecersiz()
+        {
+            var dto = new WatchlistItemDto { Title = "", Category = "İzleme" };
+
+            Assert.Contains(Validate(dto), r => r.ErrorMessage == "Başlık zorunludur.");
+        }
+
+        [Fact]
+        public void WatchlistItemDto_BilinmeyenKategori_Gecersiz()
+        {
+            var dto = new WatchlistItemDto { Title = "Dark", Category = "Dinleme" };
+
+            Assert.Contains(Validate(dto), r => r.ErrorMessage == "Geçersiz kategori.");
+        }
+
+        // ============ GoalDto ============
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-5)]
+        [InlineData(1001)]
+        public void GoalDto_AralikDisiHedef_Gecersiz(int target)
+        {
+            var dto = new GoalDto { Year = 2026, Type = "Kitap", Target = target };
+
+            Assert.Contains(Validate(dto), r => r.ErrorMessage == "Hedef 1 ile 1000 arasında olmalı.");
+        }
+
+        [Fact]
+        public void GoalDto_GecerliHedef_HataYok()
+        {
+            var dto = new GoalDto { Year = 2026, Type = "Hepsi", Target = 20 };
+
+            Assert.Empty(Validate(dto));
+        }
     }
 }

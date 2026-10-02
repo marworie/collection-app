@@ -26,14 +26,14 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
     localStorage.getItem('loggedInUser') !== null
   )
-  const [searchQuery, setSearchQuery] = useState('') //arama çubuğu
-  const [sortBy, setSortBy] = useState('newest') //sıralama
-  const [viewMode, setViewMode] = useState('grid') //görünüm
+  const [searchQuery, setSearchQuery] = useState('') // arama çubuğu
+  const [sortBy, setSortBy] = useState('newest') // sıralama
+  const [viewMode, setViewMode] = useState('grid') // görünüm
   const [showAddForm, setShowAddForm] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [suggestedItem, setSuggestedItem] = useState(null)
   const showToast = useToast()
-  const pendingDeletes = useRef({}) // hangi id nin silinmesi "bekletiliyor", zamanlayıcısını burada tutuyoruz
+  const pendingDeletes = useRef({}) // hangi id'nin silinmesi "bekletiliyor", zamanlayıcısını burada tutuyoruz
   const searchInputRef = useRef(null)
   const [showSplash, setShowSplash] = useState(false)
   const [filters, setFilters] = useState({ status: 'all', genre: 'all', minRating: 0 })
@@ -47,59 +47,59 @@ function App() {
   }
 
   function handleDeleteRequest(item) {
-  // Öğeyi ekrandan hemen kaldırıyoruz (kullanıcı silinmiş gibi görsün)
-  setItems(prev => prev.filter(i => i.id !== item.id))
+    // Öğeyi ekrandan hemen kaldırıyoruz (kullanıcı silinmiş gibi görsün)
+    setItems(prev => prev.filter(i => i.id !== item.id))
 
-  // 5 saniye sonra gerçekten backend'den silecek bir zamanlayıcı kuruyoruz
-  const timeoutId = setTimeout(async () => {
-    await apiFetch(`/api/Items/${item.id}`, { method: 'DELETE' })
-    delete pendingDeletes.current[item.id]
-  }, 5000)
+    // 5 saniye sonra gerçekten backend'den silecek bir zamanlayıcı kuruyoruz
+    const timeoutId = setTimeout(async () => {
+      await apiFetch(`/api/Items/${item.id}`, { method: 'DELETE' })
+      delete pendingDeletes.current[item.id]
+    }, 5000)
 
-  pendingDeletes.current[item.id] = timeoutId
+    pendingDeletes.current[item.id] = timeoutId
 
-  showToast(`"${item.title}" silindi`, 'success', 'Geri Al', () => undoDelete(item))
-}
-
-function undoDelete(item) {
-  // Zamanlayıcıyı iptal ediyoruz ki backend'e hiç silme isteği gitmesin
-  clearTimeout(pendingDeletes.current[item.id])
-  delete pendingDeletes.current[item.id]
-
-  // Öğeyi listeye geri koyuyoruz
-  setItems(prev => [item, ...prev])
-}
-
-  function handleSuggest() {
-  // Zaten bitirilmiş (Bitti/Okudum) olanları hariç tutuyoruz
-  const candidates = items.filter(
-    item => item.status !== 'Bitti' && item.status !== 'Okudum'
-  )
-
-  if (candidates.length === 0) {
-    showToast('Önerilecek bir şey yok, hepsini bitirmişsin! 🎉')
-    return
+    showToast(`"${item.title}" silindi`, 'success', 'Geri Al', () => undoDelete(item))
   }
 
-  const random = candidates[Math.floor(Math.random() * candidates.length)]
-  setSuggestedItem(random)
-}
+  function undoDelete(item) {
+    // Zamanlayıcıyı iptal ediyoruz ki backend'e hiç silme isteği gitmesin
+    clearTimeout(pendingDeletes.current[item.id])
+    delete pendingDeletes.current[item.id]
+
+    // Öğeyi listeye geri koyuyoruz
+    setItems(prev => [item, ...prev])
+  }
+
+  function handleSuggest() {
+    // Zaten bitirilmiş (Bitti/Okudum) olanları hariç tutuyoruz
+    const candidates = items.filter(
+      item => item.status !== 'Bitti' && item.status !== 'Okudum'
+    )
+
+    if (candidates.length === 0) {
+      showToast('Önerilecek bir şey yok, hepsini bitirmişsin! 🎉')
+      return
+    }
+
+    const random = candidates[Math.floor(Math.random() * candidates.length)]
+    setSuggestedItem(random)
+  }
 
   async function handleReorder(reorderedItems) {
-  // Yeni sıraya göre her öğeye 0, 1, 2... diye SortOrder ver
-  const updates = reorderedItems.map((item, index) => ({
-    id: item.id,
-    sortOrder: index
-  }))
+    // Yeni sıraya göre her öğeye 0, 1, 2... diye SortOrder ver
+    const updates = reorderedItems.map((item, index) => ({
+      id: item.id,
+      sortOrder: index
+    }))
 
-  await apiFetch('/api/Items/reorder', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates)
-  })
+    await apiFetch('/api/Items/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    })
 
-  fetchItems()
-}
+    fetchItems()
+  }
 
   // api.js'ten gelen hata olaylarını mevcut toast sistemiyle göster
   useEffect(() => {
@@ -110,12 +110,12 @@ function undoDelete(item) {
 
   useEffect(() => {
     if (showSplash) {
-      // 2 buçuk saniye sonra karşılama ekranını kapat
-      const timer = setTimeout(() => setShowSplash(false),2500)
-      // splash erken kapanırsa zamanlayıcıyı temizle gereksiz çalışmasın
+      // 2,5 saniye sonra karşılama ekranını kapat
+      const timer = setTimeout(() => setShowSplash(false), 2500)
+      // splash erken kapanırsa zamanlayıcıyı temizle, gereksiz çalışmasın
       return () => clearTimeout(timer)
     }
-  },[showSplash])
+  }, [showSplash])
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -123,18 +123,18 @@ function undoDelete(item) {
     }
   }, [isLoggedIn])
 
-    function handleLogout() {
+  function handleLogout() {
     localStorage.removeItem('loggedInUser')
     localStorage.removeItem('token')
     setIsLoggedIn(false)
-    setSidebarOpen(false)   // çıkış yapınca, tekrar girişte menü açık gelmesin
+    setSidebarOpen(false) // çıkış yapınca, tekrar girişte menü açık gelmesin
   }
 
   // Menüden bir sayfa seçilince hem sayfayı değiştir hem menüyü kapat
   function handleViewChange(view) {
-  setCurrentView(view)
-  setSidebarOpen(false)
-}
+    setCurrentView(view)
+    setSidebarOpen(false)
+  }
 
   function toggleDarkMode() {
     const newValue = !darkMode
@@ -142,45 +142,42 @@ function undoDelete(item) {
     localStorage.setItem('darkMode', newValue)
   }
 
- 
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark-mode')
+      document.documentElement.classList.add('dark-mode')
+    } else {
+      document.body.classList.remove('dark-mode')
+      document.documentElement.classList.remove('dark-mode')
+    }
+  }, [darkMode])
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      // "/" tuşu: arama kutusuna odaklan (ama zaten bir input'a yazıyorsak devreye girmesin)
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault() // tarayıcının kendi "sayfada bul" özelliğini açmasını engelle
+        searchInputRef.current?.focus()
+      }
+      // Esc tuşu: açık olan öneri modalını kapat
+      if (e.key === 'Escape') {
+        setSuggestedItem(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    // component kaldırıldığında dinleyiciyi temizle (hafıza sızıntısı olmasın diye)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // GİRİŞ YAPILMAMIŞSA sadece Login component'ini göster, gerisi hiç render edilmesin
-  useEffect(() => {
-  if (darkMode) {
-    document.body.classList.add('dark-mode')
-    document.documentElement.classList.add('dark-mode') 
-  } else {
-    document.body.classList.remove('dark-mode')
-    document.documentElement.classList.remove('dark-mode') 
-  }
-}, [darkMode])
-  
-  useEffect(() => {
-  function handleKeyDown(e) {
-    // "/" tuşu: arama kutusuna odaklan (ama zaten bir input'a yazıyorsak devreye girmesin)
-    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-      e.preventDefault() // tarayıcının kendi "sayfada bul" özelliğini açmasını engelle
-      searchInputRef.current?.focus()
-    }
-    // Esc tuşu: açık olan öneri modalını kapat
-    if (e.key === 'Escape') {
-      setSuggestedItem(null)
-    }
-  }
-  window.addEventListener('keydown', handleKeyDown)
-  // component kaldırıldığında dinleyiciyi temizle (hafıza sızıntısı olmasın diye)
-  return () => window.removeEventListener('keydown', handleKeyDown)
-}, [])
-
-
   if (!isLoggedIn) {
     return (
-    <Login 
-      onLoginSuccess={() => {
-        setIsLoggedIn(true)
-        setShowSplash(true)
-      }}
-     />
+      <Login
+        onLoginSuccess={() => {
+          setIsLoggedIn(true)
+          setShowSplash(true)
+        }}
+      />
     )
   }
 
@@ -188,70 +185,70 @@ function undoDelete(item) {
     return <LoginSplash />
   }
 
-let filteredItems = items
-if (currentView === 'favorites') {
-  filteredItems = items.filter(item => item.isFavorite)
-} else if (currentView !== 'all' && currentView !== 'profile') {
-  filteredItems = items.filter(item => item.type === currentView)
-}
-
-// Arama filtresi başlıkta arama kelimesi geçenleri bul
-if (searchQuery.trim() !== '') {
-  filteredItems = filteredItems.filter(item =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-}
-
-// Filtre paneli
-if (filters.status === 'inProgress') {
-  filteredItems = filteredItems.filter(i => i.status === 'İzliyorum' || i.status === 'Okuyorum')
-} else if (filters.status === 'done') {
-  filteredItems = filteredItems.filter(i => i.status === 'Bitti' || i.status === 'Okudum')
-} else if (filters.status === 'dropped') {
-  filteredItems = filteredItems.filter(i => i.status === 'Yarıda Bıraktım')
-}
-
-if (filters.genre !== 'all') {
-  filteredItems = filteredItems.filter(i => i.genre === filters.genre)
-}
-
-if (filters.minRating > 0) {
-  filteredItems = filteredItems.filter(i => (parseFloat(i.rating) || 0) >= filters.minRating)
-}
-
-// Sıralama
-filteredItems =[...filteredItems].sort((a, b) => {
-  if (sortBy === 'rating') {
-    return (b.rating || 0) - (a.rating || 0) // yüksek puandan düşük puana sıralama
+  let filteredItems = items
+  if (currentView === 'favorites') {
+    filteredItems = items.filter(item => item.isFavorite)
+  } else if (currentView !== 'all' && currentView !== 'profile') {
+    filteredItems = items.filter(item => item.type === currentView)
   }
-  if (sortBy === 'alpha') {
-    return a.title.localeCompare(b.title, 'tr') // türkçe alf sıralama
-  }
-  if (sortBy === 'type') {
-    return a.type.localeCompare(b.type, 'tr') // türüne göre sıralama
-  }
-  if (sortBy === 'manual') {
-    return a.sortOrder - b.sortOrder // manuel sıralama
-  }
-  return b.id - a.id // 'newest' varsayılan en yeni en üstte
-})
 
-const searchActive = searchQuery.trim() !== ''
+  // Arama filtresi: başlıkta arama kelimesi geçenleri bul
+  if (searchQuery.trim() !== '') {
+    filteredItems = filteredItems.filter(item =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
 
-function getPageTitle() {
-  if (currentView === 'Kitap') return '📚 Kitaplar'
-  if (currentView === 'Dizi') return '📺 Diziler'
-  if (currentView === 'Film') return '🎬 Filmler'
-  if (currentView === 'Belgesel') return '🎥 Belgeseller'
-  if (currentView === 'Animasyon') return '🎨 Animasyonlar'
-  if (currentView === 'Anime') return '🎌 Animeler'
-  if (currentView === 'favorites') return '❤️ Favorilerim'
+  // Filtre paneli
+  if (filters.status === 'inProgress') {
+    filteredItems = filteredItems.filter(i => i.status === 'İzliyorum' || i.status === 'Okuyorum')
+  } else if (filters.status === 'done') {
+    filteredItems = filteredItems.filter(i => i.status === 'Bitti' || i.status === 'Okudum')
+  } else if (filters.status === 'dropped') {
+    filteredItems = filteredItems.filter(i => i.status === 'Yarıda Bıraktım')
+  }
 
-  return '🎬📚 Koleksiyonum'
-}
+  if (filters.genre !== 'all') {
+    filteredItems = filteredItems.filter(i => i.genre === filters.genre)
+  }
+
+  if (filters.minRating > 0) {
+    filteredItems = filteredItems.filter(i => (parseFloat(i.rating) || 0) >= filters.minRating)
+  }
+
+  // Sıralama
+  filteredItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === 'rating') {
+      return (b.rating || 0) - (a.rating || 0) // yüksek puandan düşüğe
+    }
+    if (sortBy === 'alpha') {
+      return a.title.localeCompare(b.title, 'tr') // Türkçe alfabetik
+    }
+    if (sortBy === 'type') {
+      return a.type.localeCompare(b.type, 'tr') // türe göre
+    }
+    if (sortBy === 'manual') {
+      return a.sortOrder - b.sortOrder // manuel sıralama
+    }
+    return b.id - a.id // 'newest' varsayılan: en yeni en üstte
+  })
+
+  const searchActive = searchQuery.trim() !== ''
+
+  function getPageTitle() {
+    if (currentView === 'Kitap') return '📚 Kitaplar'
+    if (currentView === 'Dizi') return '📺 Diziler'
+    if (currentView === 'Film') return '🎬 Filmler'
+    if (currentView === 'Belgesel') return '🎥 Belgeseller'
+    if (currentView === 'Animasyon') return '🎨 Animasyonlar'
+    if (currentView === 'Anime') return '🎌 Animeler'
+    if (currentView === 'favorites') return '❤️ Favorilerim'
+
+    return '🎬📚 Koleksiyonum'
+  }
 
   return (
-      <div className={`app-container ${darkMode ? 'dark-mode' : ''} ${sidebarOpen ? 'sidebar-open' : ''}`}>
+    <div className={`app-container ${darkMode ? 'dark-mode' : ''} ${sidebarOpen ? 'sidebar-open' : ''}`}>
       {/* Hamburger buton: CSS ile sadece dar ekranlarda görünüyor */}
       <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
         {sidebarOpen ? '✕' : '☰'}
@@ -262,29 +259,29 @@ function getPageTitle() {
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         onViewChange={handleViewChange}
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
       />
 
       <main className="main-content">
-          <button onClick={toggleDarkMode} className="dark-mode-icon-btn">
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+        <button onClick={toggleDarkMode} className="dark-mode-icon-btn">
+          {darkMode ? '☀️' : '🌙'}
+        </button>
 
         {currentView === 'profile' ? (
           <Profile />
         ) : currentView === 'stats' ? (
           <Stats items={items} darkMode={darkMode} />
         ) : currentView === 'izlemeListem' ? (
-          <Watchlist category="İzleme" pageTitle="🎬 İzleme Listem" defaultType="Dizi" />
+          <Watchlist category="İzleme" pageTitle="🎬 İzleme Listem" defaultType="Dizi" onItemAdded={fetchItems} /> 
         ) : currentView === 'okumaListem' ? (
-          <Watchlist category="Okuma" pageTitle="📚 Okuma Listem" defaultType="Kitap" />
+          <Watchlist category="Okuma" pageTitle="📚 Okuma Listem" defaultType="Kitap" onItemAdded={fetchItems} />  
         ) : currentView === 'customLists' ? (
-          <CustomLists/>
+          <CustomLists />
         ) : (
           <>
             <h1>{getPageTitle()}</h1>
@@ -328,7 +325,7 @@ function getPageTitle() {
 
             <div className="action-buttons-row">
               <FilterPanel items={items} filters={filters} onChange={setFilters} />
-              <button 
+              <button
                 className="export-csv-btn"
                 onClick={() => exportItemsToCsv(filteredItems)}
               >

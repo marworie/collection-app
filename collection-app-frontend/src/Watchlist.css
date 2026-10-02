@@ -45,11 +45,13 @@
   background: white;
   padding: 14px 18px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+/* Başlık her zaman sola yaslı olsun (ana içerikten miras kalan ortalamayı ezer) */
 .watchlist-item-title {
   font-weight: 600;
+  text-align: left;
 }
 
 .watchlist-item-buttons {
@@ -63,6 +65,53 @@
   border: none;
   cursor: pointer;
   background: #f0f0f0;
+}
+
+/* Koleksiyona eklenirken butonlar soluk ve beklemede görünsün */
+.watchlist-item-buttons button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ===== TÜR SEÇME PENCERESİ ===== */
+.type-picker-box {
+  text-align: center;
+}
+
+.type-picker-box h3 {
+  margin: 0 0 4px;
+}
+
+.type-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.type-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 2px solid #f0e6fc;
+  border-radius: 12px;
+  background: #faf6ff;
+  color: #5a2a9c;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.type-picker-option:hover {
+  transform: translateY(-2px);
+  border-color: #7b2ff7;
+  background: #f3e8fd;
+}
+
+.type-picker-icon {
+  font-size: 26px;
 }
 
 /* ===== KARANLIK MOD ===== */
@@ -90,11 +139,18 @@
   color: #8888aa;
 }
 
-/* Başlık her zaman sola yaslı olsun (ana içerikten miras kalan ortalamayı ezer) */
-.watchlist-item-title {
-  text-align: left;
+.app-container.dark-mode .type-picker-option {
+  background: #2f2f4a;
+  border-color: #3a3a5a;
+  color: #d4b8ff;
 }
 
+.app-container.dark-mode .type-picker-option:hover {
+  border-color: #7b2ff7;
+  background: #3a2f5c;
+}
+
+/* ===== MOBİL ===== */
 /* Dar ekranda: başlık üstte tek satırda, butonlar altında yan yana */
 @media (max-width: 768px) {
   .watchlist-item {
@@ -112,5 +168,10 @@
 
   .watchlist-item-buttons button {
     flex: 1;   /* iki buton alt satırı eşit paylaşsın */
+  }
+
+  /* Telefonda tür kartları 2 sütun olsun, sıkışmasın */
+  .type-picker-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

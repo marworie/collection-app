@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CollectionApp.Dtos;
 using CollectionApp.Repositories;
 using System.Security.Claims;
 
@@ -7,7 +8,7 @@ namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]   // bu controller'daki her endpoint artık geçerli bir token istiyor
+    [Authorize]   // bu controller'daki her endpoint geçerli bir token istiyor
     public class WatchlistController : ControllerBase
     {
         private readonly WatchlistRepository _watchlistRepository;
@@ -30,23 +31,24 @@ namespace CollectionApp.Controllers
             return Ok(items);
         }
 
-        public class AddWatchlistRequest
-        {
-            public required string Title { get; set; }
-            public required string Category { get; set; }
-        }
-
+        // Buraya gelindiyse DTO doğrulamadan geçmiş demektir
         [HttpPost]
-        public async Task<IActionResult> Add([FromBody] AddWatchlistRequest request)
+        public async Task<IActionResult> Add([FromBody] WatchlistItemDto dto)
         {
-            var newId = await _watchlistRepository.AddAsync(request.Title, request.Category, GetUserId());
-            return Ok(new { id = newId, title = request.Title, category = request.Category });
+            string title = dto.Title.Trim();
+            var newId = await _watchlistRepository.AddAsync(title, dto.Category, GetUserId());
+            return Ok(new { id = newId, title, category = dto.Category });
         }
 
+        // Silinecek kayıt bulunamazsa (ya da başkasına aitse) 404
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            await _watchlistRepository.DeleteAsync(id, GetUserId());
+            int affected = await _watchlistRepository.DeleteAsync(id, GetUserId());
+            if (affected == 0)
+            {
+                return NotFound();
+            }
             return NoContent();
         }
     }

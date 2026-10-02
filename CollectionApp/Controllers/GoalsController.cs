@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CollectionApp.Dtos;
 using CollectionApp.Repositories;
 using System.Security.Claims;
 
@@ -7,13 +8,9 @@ namespace CollectionApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]   // bu controller'daki her endpoint artık geçerli bir token istiyor
+    [Authorize]   // bu controller'daki her endpoint geçerli bir token istiyor
     public class GoalsController : ControllerBase
     {
-        // Kabul edilen türler. Bunun dışında bir şey gelirse reddediyoruz
-        private static readonly string[] AllowedTypes =
-            { "Hepsi", "Kitap", "Dizi", "Film", "Belgesel", "Animasyon", "Anime" };
-
         private readonly GoalRepository _repository;
 
         public GoalsController(GoalRepository repository)
@@ -34,29 +31,12 @@ namespace CollectionApp.Controllers
             return Ok(goals);
         }
 
-        public class SetGoalRequest
-        {
-            public int Year { get; set; }
-            public required string Type { get; set; }
-            public int Target { get; set; }
-        }
-
         // PUT api/Goals: hedef koyar ya da varsa günceller
+        // Yıl, tür ve hedef sayısı kontrolleri artık GoalDto'da
         [HttpPut]
-        public async Task<IActionResult> SetGoal([FromBody] SetGoalRequest request)
+        public async Task<IActionResult> SetGoal([FromBody] GoalDto dto)
         {
-            // Girdi doğrulama: frontend'e güvenmeyip backend'de de kontrol ediyoruz.
-            // API'ye Swagger'dan ya da başka bir yerden de istek atılabilir.
-            if (request.Year < 2000 || request.Year > 2100)
-                return BadRequest(new { message = "Geçersiz yıl" });
-
-            if (!AllowedTypes.Contains(request.Type))
-                return BadRequest(new { message = "Geçersiz tür" });
-
-            if (request.Target < 1 || request.Target > 1000)
-                return BadRequest(new { message = "Hedef 1 ile 1000 arasında olmalı" });
-
-            await _repository.UpsertAsync(request.Year, request.Type, request.Target, GetUserId());
+            await _repository.UpsertAsync(dto.Year, dto.Type, dto.Target, GetUserId());
             return NoContent();
         }
 

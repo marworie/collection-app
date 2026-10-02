@@ -59,7 +59,11 @@ function GoalsSection({ items }) {
       fetchGoals()
       showToast(`🎯 ${year} hedefi kaydedildi!`)
     } else {
-      showToast('Hedef kaydedilemedi', 'error')
+      const data = await response.json().catch(() => ({}))
+      // Doğrulama ve sunucu hatalarını apiFetch zaten gösteriyor
+      if (!data.errors && response.status < 500) {
+        showToast('Hedef kaydedilemedi', 'error')
+      }
     }
   }
 
