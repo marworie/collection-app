@@ -42,6 +42,23 @@ namespace CollectionApp.Dtos
         // Etiketlerle yazılamayan, birden fazla alanı ilgilendiren kurallar
         public IEnumerable<ValidationResult> Validate(ValidationContext context)
         {
+            // Sunucu farklı saat diliminde olabilir, 1 günlük tolerans bırakıyoruz
+            var latestAllowed = DateTime.Today.AddDays(1);
+
+            if (StartDate.HasValue && StartDate.Value.Date > latestAllowed)
+            {
+                yield return new ValidationResult(
+                    "Başlangıç tarihi gelecekte olamaz.",
+                    new[] { nameof(StartDate) });
+            }
+
+            if (EndDate.HasValue && EndDate.Value.Date > latestAllowed)
+            {
+                yield return new ValidationResult(
+                    "Bitiş tarihi gelecekte olamaz.",
+                    new[] { nameof(EndDate) });
+            }
+
             if (StartDate.HasValue && EndDate.HasValue && EndDate < StartDate)
             {
                 yield return new ValidationResult(

@@ -8,7 +8,8 @@ import AddToListModal from './AddToListModal'
 import { useToast } from './ToastContext'
 import { apiFetch } from './api'
 
-function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
+// inList: kart bir özel listenin içinde mi gösteriliyor? (true ise "Sil" yerine "Listeden Çıkar")
+function ItemCard({ item, onDeleteRequest, onItemUpdated, inList = false }) {  
   const [isEditing, setIsEditing] = useState(false)
   const [title, setTitle] = useState(item.title)
   const [type, setType] = useState(item.type)
@@ -28,6 +29,9 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [showAddToList, setShowAddToList] = useState(false)
   const showToast = useToast()
+
+  // Bu ay, yerel saate göre "YYYY-MM" biçiminde
+  const thisMonth = new Date().toLocaleDateString('sv-SE').slice(0, 7)
 
   function getStatusOptions(type) {
     if (type === 'Kitap') {
@@ -49,7 +53,7 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
     if (!validOptions.includes(status)) {
       setStatus(validOptions[0]) // geçersizse, o türün ilk seçeneğine sıfırla
     }
-  }, [type]) 
+  }, [type])
 
   function renderStars(value) {
     const stars = []
@@ -72,24 +76,24 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
 
     return <span className="star-rating-display">{stars}</span>
   }
-  
-  function getStatusBadge(status){
-    if(status === 'Bitti') return { icon: '✅', class: 'status-done'}
-    if(status === 'Okudum') return { icon: '✅', class: 'status-done'}
-    if(status === 'İzliyorum') return { icon: '👀', class: 'status-progress'}
-    if(status === 'Okuyorum') return { icon: '👀', class: 'status-progress'}
-    if(status === 'Yarıda Bıraktım') return { icon: '⏸️', class: 'status-dropped'}
-    return { icon: '', class: ''}
+
+  function getStatusBadge(status) {
+    if (status === 'Bitti') return { icon: '✅', class: 'status-done' }
+    if (status === 'Okudum') return { icon: '✅', class: 'status-done' }
+    if (status === 'İzliyorum') return { icon: '👀', class: 'status-progress' }
+    if (status === 'Okuyorum') return { icon: '👀', class: 'status-progress' }
+    if (status === 'Yarıda Bıraktım') return { icon: '⏸️', class: 'status-dropped' }
+    return { icon: '', class: '' }
   }
 
   function getRewatchLabel(type) {
-    return type == 'Kitap' ? 'Tekrar Okudum' : 'Tekrar İzledim'
+    return type === 'Kitap' ? 'Tekrar Okudum' : 'Tekrar İzledim'
   }
 
   function confirmDelete() {
-  onDeleteRequest(item)
-  setShowConfirm(false)
-}
+    onDeleteRequest(item)
+    setShowConfirm(false)
+  }
 
   async function handleSearch() {
     if (!title.trim()) return
@@ -121,8 +125,8 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
       coverImageUrl: coverImageUrl || null,
       notes: notes || null,
       description: description || null,
-      startDate: startDate ? startDate + '-01' :  null,
-      endDate: endDate ? endDate + '-01' :  null,
+      startDate: startDate ? startDate + '-01' : null,
+      endDate: endDate ? endDate + '-01' : null,
       genre: genre || null,
       isFavorite: isFavorite
     }
@@ -135,15 +139,15 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
 
     if (response.ok) {
       const justFinished =
-        (status === 'Bitti' || status === 'Okudum') && 
+        (status === 'Bitti' || status === 'Okudum') &&
         item.status !== 'Bitti' && item.status !== 'Okudum'
-      
+
       if (justFinished) {
         confetti({
           particleCount: 120,
           spread: 90,
           origin: { y: 0.6 },
-          colors: ['#7b2ff7','#f107a3','#ffc107']
+          colors: ['#7b2ff7', '#f107a3', '#ffc107']
         })
       }
       setIsEditing(false)
@@ -178,28 +182,27 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
     }
   }
 
-  // Butona her tıklandığında backend e bu öğenin sayacını bir arttır demek
-  async function handleRewatch(){
-   const response = await apiFetch(`/api/Items/${item.id}/rewatch`, {
-   method: 'PATCH'
-  })
-  if (response.ok) {
-    onItemUpdated() // listeyi yenile, güncel rewatchCountu göster
-    showToast(`"${item.title}" tekrar izleme sayısı arttı! 🔁`)
+  // Butona her tıklandığında backend'e bu öğenin sayacını bir artır demek
+  async function handleRewatch() {
+    const response = await apiFetch(`/api/Items/${item.id}/rewatch`, {
+      method: 'PATCH'
+    })
+    if (response.ok) {
+      onItemUpdated() // listeyi yenile, güncel rewatchCount'u göster
+      showToast(`"${item.title}" tekrar izleme sayısı arttı! 🔁`)
+    }
   }
-}
 
   async function handleUndoRewatch() {
-  const response = await apiFetch(`/api/Items/${item.id}/unrewatch`, {
-    method: 'PATCH'
-  })
+    const response = await apiFetch(`/api/Items/${item.id}/unrewatch`, {
+      method: 'PATCH'
+    })
 
-  if (response.ok) {
-    onItemUpdated()
-    showToast('Geri alındı')
+    if (response.ok) {
+      onItemUpdated()
+      showToast('Geri alındı')
+    }
   }
-}
-
 
   if (isEditing) {
     return (
@@ -276,14 +279,13 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
         </select>
 
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="Okudum">Okudum</option>
-          <option value="İzliyorum">İzliyorum</option>
-          <option value="Bitti">Bitti</option>
-          <option value="Yarıda Bıraktım">Yarıda Bıraktım</option>
+          {getStatusOptions(type).map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
 
         <div className="rating-slider">
-          <input 
+          <input
             type="range"
             min="0"
             max="5"
@@ -304,13 +306,15 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
         />
 
         <div className="date-row">
-          <input 
+          <input
             type="month"
+            max={thisMonth}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
           <input
             type="month"
+            max={thisMonth}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
@@ -379,11 +383,17 @@ function ItemCard({ item, onDeleteRequest, onItemUpdated }) {
       )}
 
       <button className="edit-btn" onClick={() => setIsEditing(true)}>✏️ Düzenle</button>
-      <button className="delete-btn" onClick={() => setShowConfirm(true)}>🗑️ Sil</button>
+
+      {/*listede "Listeden Çıkar", diğer yerlerde "Sil" */}
+      <button className="delete-btn" onClick={() => setShowConfirm(true)}>
+        {inList ? '➖ Listeden Çıkar' : '🗑️ Sil'}
+      </button>
 
       {showConfirm && (
         <ConfirmModal
-          message={`"${item.title}" silinsin mi?`}
+          message={inList   // ← yeni
+            ? `"${item.title}" bu listeden çıkarılsın mı? (Koleksiyonunda kalmaya devam eder)`
+            : `"${item.title}" silinsin mi?`}
           onConfirm={confirmDelete}
           onCancel={() => setShowConfirm(false)}
         />

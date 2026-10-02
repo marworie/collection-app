@@ -71,6 +71,24 @@ namespace CollectionApp.Tests
             Assert.Contains(Validate(dto), r => r.MemberNames.Contains(nameof(ItemDto.EndDate)));
         }
 
+        [Fact]
+        public void ItemDto_GelecekTarih_Gecersiz()
+        {
+            var dto = ValidItem();
+            dto.EndDate = DateTime.Today.AddMonths(3);
+
+            Assert.Contains(Validate(dto), r => r.ErrorMessage == "Bitiş tarihi gelecekte olamaz.");
+        }
+
+        [Fact]
+        public void ItemDto_BugununTarihi_Gecerli()
+        {
+            var dto = ValidItem();
+            dto.EndDate = DateTime.Today;
+
+            Assert.Empty(Validate(dto));
+        }
+
         // ============ RegisterDto ============
 
         [Theory]

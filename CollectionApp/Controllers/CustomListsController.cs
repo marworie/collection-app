@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using CollectionApp.Repositories;
 using System.Security.Claims;
+using CollectionApp.Dtos;
 
 namespace CollectionApp.Controllers
 {
@@ -17,30 +18,38 @@ namespace CollectionApp.Controllers
             _repository = repository;
         }
 
-        // Token'ın içindeki kullanıcı id'siniokuyan küçük yardımcı
+        // Token'ın içindeki kullanıcı id'sini okuyan küçük yardımcı
         private int GetUserId()
         {
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         }
 
+        // Listelerim sayfası için: listeler + öğe sayısı + ilk 4 kapak
         [HttpGet]
         public async Task<IActionResult> GetAllLists()
         {
-            var lists = await _repository.GetAllListsAsync(GetUserId());
+            var lists = await _repository.GetListSummariesAsync(GetUserId());
             return Ok(lists);
         }
 
-        public class CreateListRequest
+        // Yeni liste oluşturur (ad boş ya da çok uzunsa DTO doğrulaması 400 döndürür)
+        [HttpPost]
+        public async Task<IActionResult> CreateList([FromBody] CustomListDto dto)
         {
-            public required string Name { get; set; }
-            public string Icon { get; set; } = "🏷️";
+            int newId = await _repository.CreateListAsync(dto.Name.Trim(), dto.Icon, GetUserId());
+            return Ok(new { id = newId, name = dto.Name.Trim(), icon = dto.Icon });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateList([FromBody] CreateListRequest request)
+        // Listenin adını ve ikonunu günceller (sadece kendi listesiyse)
+        [HttpPut("{listId}")]
+        public async Task<IActionResult> UpdateList(int listId, [FromBody] CustomListDto dto)
         {
-            int newId = await _repository.CreateListAsync(request.Name, request.Icon, GetUserId());
-            return Ok(new { id = newId, name = request.Name, icon = request.Icon });
+            bool updated = await _repository.UpdateListAsync(listId, dto.Name.Trim(), dto.Icon, GetUserId());
+            if (!updated)
+            {
+                return NotFound();
+            }
+            return NoContent();
         }
 
         [HttpDelete("{listId}")]

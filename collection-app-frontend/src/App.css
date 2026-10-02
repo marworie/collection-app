@@ -1525,48 +1525,125 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   margin-top: 6px;
 }
 
+/* ===== LİSTELERİM ===== */
 .customlists-page {
-  padding: 20px;
+  text-align: left;
+}
+
+.customlists-page h2 {
+  margin-bottom: 20px;
 }
 
 .customlists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .customlist-card {
+  position: relative;
   background: white;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-}
-
-.customlist-card-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  border-radius: 16px;
+  overflow: hidden;
   cursor: pointer;
-  flex: 1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.customlist-icon {
-  font-size: 22px;
+.customlist-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(123, 47, 247, 0.15);
+}
+
+/* Kapak mozaiği */
+.customlist-cover {
+  display: grid;
+  height: 160px;
+  gap: 2px;
+  background: linear-gradient(135deg, #f3e8fd, #ffe3ec);
+}
+
+.customlist-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  min-height: 0;
+}
+
+.customlist-cover.covers-0 {
+  place-items: center;
+}
+
+.customlist-cover.covers-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 3 kapak: ilki solda tam boy, diğer ikisi sağda üst üste */
+.customlist-cover.covers-3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.customlist-cover.covers-3 img:first-child {
+  grid-row: 1 / 3;
+}
+
+.customlist-cover.covers-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.customlist-cover-icon {
+  font-size: 56px;
+}
+
+.customlist-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px 16px;
 }
 
 .customlist-name {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 16px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;   /* uzun isim "..." ile kesilsin, iki satıra bölünmesin */
 }
 
+.customlist-count {
+  font-size: 13px;
+  color: #888;
+  font-weight: 400;
+}
+
+/* Sil butonu: sadece karta gelince görünsün */
 .customlist-delete-btn {
-  background: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
   border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   font-size: 14px;
-  opacity: 0.6;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.customlist-card:hover .customlist-delete-btn {
+  opacity: 1;
+}
+
+/* Dokunmatik ekranlarda hover olmadığı için hep görünsün */
+@media (hover: none) {
+  .customlist-delete-btn {
+    opacity: 1;
+  }
 }
 
 .customlist-back-btn {
@@ -1579,17 +1656,97 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   padding: 0;
 }
 
+.customlist-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.customlist-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.customlist-edit-btn:hover {
+  opacity: 1;
+}
+
+.customlist-edit-form {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(123, 47, 247, 0.08);
+  margin-bottom: 20px;
+  max-width: 480px;
+}
+
+.customlist-edit-row {
+  display: flex;
+  gap: 8px;
+}
+
+.customlist-edit-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.customlist-edit-row button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #7b2ff7, #f107a3);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.customlist-edit-row button.cancel {
+  background: #eee;
+  color: #555;
+}
+
+.app-container.dark-mode .customlist-edit-form {
+  background: #26263f;
+}
+
+.app-container.dark-mode .customlist-edit-row input {
+  background: #1e1e33;
+  color: #e0e0f0;
+  border-color: #3a3a5a;
+}
+
 .customlists-empty {
   color: #999;
   font-style: italic;
 }
 
-.app-container.dark-mode .addlist-box {
+/* Karanlık mod */
+.app-container.dark-mode .customlist-card {
   background: #26263f;
-  color: #e0e0f0;
 }
 
-.app-container.dark-mode .customlist-card {
+.app-container.dark-mode .customlist-cover {
+  background: linear-gradient(135deg, #3a2f5c, #4a2a35);
+}
+
+.app-container.dark-mode .customlist-name {
+  color: #f0e6fc;
+}
+
+.app-container.dark-mode .customlist-delete-btn {
+  background: rgba(38, 38, 63, 0.9);
+}
+
+.app-container.dark-mode .addlist-box {
   background: #26263f;
   color: #e0e0f0;
 }
@@ -2037,24 +2194,3 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   color: inherit;
   cursor: pointer;
 }
-
-.error-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 9999;
-  max-width: 360px;
-  padding: 14px 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ef4444, #f107a3);
-  color: white;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  animation: toast-in 0.3s ease;
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0);}
-}
-

@@ -16,6 +16,8 @@ function AddItemForm({ onItemAdded, currentView }) {
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [description, setDescription] = useState('')
+    // Bu ay, yerel saate göre "YYYY-MM" biçiminde (ay seçici bu formatı bekliyor)
+  const thisMonth = new Date().toLocaleDateString('sv-SE').slice(0, 7)
 
   function getStatusOptions(type) {
   if (type === 'Kitap') {
@@ -96,10 +98,13 @@ function applySearchResult(result) {
       onItemAdded()
       showToast(`"${newItem.title}" eklendi!`)
     } else {
-      showToast('Ekleme sırasında bir hata oluştu', 'error')
-    }
+      const data = await response.json().catch(() => ({}))
+      // Doğrulama (errors) ve sunucu (500) hatalarını apiFetch zaten gösteriyor
+      if (!data.errors && response.status < 500) {
+        showToast('Ekleme sırasında bir hata oluştu', 'error')
+      }
   }
-
+}
   return (
   <form onSubmit={handleSubmit} className="add-item-form">
     <div className="form-row">
@@ -206,11 +211,13 @@ function applySearchResult(result) {
     <div className="date-row">
       <input
         type="month"
+        max={thisMonth}
         value={startDate}
         onChange={(e) => setStartDate(e.target.value)}
       />
       <input
         type="month"
+        max={thisMonth}
         value={endDate}
         onChange={(e) => setEndDate(e.target.value)}
       />
