@@ -1,5 +1,7 @@
 # 🎬📚 Koleksiyonum
 
+![Testler](https://github.com/marworie/collection-app/actions/workflows/ci.yml/badge.svg)
+
 Kitap, dizi, film, belgesel, animasyon ve anime takibini tek yerden yapabildiğin, renkli ve kişiselleştirilebilir bir koleksiyon takip uygulaması. React, ASP.NET Core Web API ve SQL Server ile geliştirdim.
 
 🔗 **Canlı demo:** https://koleksiyonum-app.runasp.net
