@@ -1,5 +1,5 @@
-# Her push'ta ve pull request'te backend testlerini çalıştırır
-name: Testler
+# Her push'ta testleri çalıştırır; main'e push'ta testler geçerse siteyi yayınlar
+name: Test ve Yayın
 
 on:
   push:
@@ -8,14 +8,13 @@ on:
     branches: [ main ]
 
 jobs:
+  # ============ 1. TEST ============
   test:
-    runs-on: ubuntu-latest   # GitHub'ın verdiği temiz bir Linux makine
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. Repo'daki kodu makineye indir
       - uses: actions/checkout@v4
 
-      # 2. .NET'i kur (backend 8, test projesi daha yeni bir sürümle oluşturulmuş olabilir)
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
@@ -23,6 +22,82 @@ jobs:
             9.0.x
             10.0.x
 
-      # 3. Testleri çalıştır, biri bile kırmızıysa iş başarısız olur
       - name: Testleri çalıştır
         run: dotnet test CollectionApp.Tests/CollectionApp.Tests.csproj --verbosity normal
+
+  # ============ 2. YAYIN ============
+  deploy:
+    needs: test                              # testler yeşil değilse bu iş hiç başlamaz
+    if: github.event_name == 'push'          # pull request'lerde yayın yapma, sadece main'e push'ta
+    runs-on: windows-latest                  # WebDeploy (msdeploy) Windows'ta çalışıyor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Frontend: React'i derle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Frontend'i derle
+        working-directory: collection-app-frontend
+        run: |
+          npm ci
+          npm run build
+
+      # dist'i backend'in wwwroot'una kopyala (elle yaptığımız adımın aynısı)
+      - name: dist'i wwwroot'a kopyala
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force CollectionApp/wwwroot | Out-Null
+          Remove-Item CollectionApp/wwwroot/* -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item collection-app-frontend/dist/* CollectionApp/wwwroot/ -Recurse
+
+      # Backend: yayına hazır paketi oluştur
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Backend'i paketle
+        run: dotnet publish CollectionApp/CollectionApp.csproj -c Release -o publish
+
+      # Gizli ayarları GitHub Secrets'tan alıp appsettings.Production.json olarak pakete ekle
+      - name: Üretim ayarlarını yaz
+        shell: pwsh
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          DB_CONNECTION: ${{ secrets.DB_CONNECTION }}
+        run: |
+          $settings = @{
+            JwtSecret = $env:JWT_SECRET
+            TmdbApiKey = $env:TMDB_API_KEY
+            ConnectionStrings = @{ CollectionDB = $env:DB_CONNECTION }
+          }
+          $settings | ConvertTo-Json | Set-Content publish/appsettings.Production.json -Encoding utf8
+
+      # WebDeploy ile MonsterASP'a yükle
+      - name: MonsterASP'a yükle
+        shell: pwsh
+        env:
+          WEBDEPLOY_URL: ${{ secrets.WEBDEPLOY_URL }}
+          WEBDEPLOY_SITE: ${{ secrets.WEBDEPLOY_SITE }}
+          WEBDEPLOY_USERNAME: ${{ secrets.WEBDEPLOY_USERNAME }}
+          WEBDEPLOY_PASSWORD: ${{ secrets.WEBDEPLOY_PASSWORD }}
+        run: |
+          # msdeploy makinede yoksa kur
+          $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            choco install webdeploy -y --no-progress
+          }
+
+          $source = (Resolve-Path publish).Path
+
+          & $msdeploy -verb:sync `
+            "-source:contentPath=$source" `
+            "-dest:contentPath=$env:WEBDEPLOY_SITE,computerName=$env:WEBDEPLOY_URL,userName=$env:WEBDEPLOY_USERNAME,password=$env:WEBDEPLOY_PASSWORD,authType=Basic" `
+            -allowUntrusted `
+            -enableRule:AppOffline `
+            -enableRule:DoNotDeleteRule
+
+          if ($LASTEXITCODE -ne 0) { exit 1 }
