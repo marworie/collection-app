@@ -2,12 +2,13 @@
 // App.jsx
 // Uygulamanın ana bileşeni. Giriş durumunu, karanlık modu, hangi sayfanın
 // açık olduğunu (currentView) ve koleksiyon öğelerini yönetir.
-// Sidebar'dan seçilen sayfaya göre ilgili bileşeni gösterir;
-// ana sayfada arama, filtreleme, sıralama ve öğe ekleme burada yapılır.
+// Sidebar'dan (masaüstü) ya da BottomNav'dan (telefon) seçilen sayfaya göre
+// ilgili bileşeni gösterir; ana sayfada arama, filtreleme, sıralama ve öğe ekleme burada yapılır.
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react'
 import Sidebar from './Sidebar'
+import BottomNav from './BottomNav'
 import Profile from './Profile'
 import ItemCard from './ItemCard'
 import AddItemForm from './AddItemForm'
@@ -16,7 +17,6 @@ import Stats from './Stats'
 import './App.css'
 import Watchlist from './Watchlist'
 import './Watchlist.css'
-import AvatarIcon from './AvatarIcon'
 import DraggableItemList from './DraggableItemList'
 import SuggestionModal from './SuggestionModal'
 import { useToast } from './ToastContext'
@@ -25,6 +25,17 @@ import LoginSplash from './LoginSplash'
 import { apiFetch } from './api'
 import FilterPanel from './FilterPanel'
 import { exportItemsToCsv } from './exportUtils'
+
+// Telefonda ana sayfanın üstünde görünen tür filtreleri (masaüstünde Sidebar'da var)
+const TYPE_CHIPS = [
+  { value: 'all', label: 'Tümü' },
+  { value: 'Kitap', label: '📚 Kitap' },
+  { value: 'Dizi', label: '📺 Dizi' },
+  { value: 'Film', label: '🎬 Film' },
+  { value: 'Belgesel', label: '🎥 Belgesel' },
+  { value: 'Animasyon', label: '🎨 Animasyon' },
+  { value: 'Anime', label: '🎌 Anime' }
+]
 
 function App() {
   const [items, setItems] = useState([])
@@ -136,11 +147,12 @@ function App() {
     localStorage.removeItem('loggedInUser')
     localStorage.removeItem('token')
     setIsLoggedIn(false)
-    setSidebarOpen(false) // çıkış yapınca, tekrar girişte menü açık gelmesin
+    setSidebarOpen(false)  // çıkış yapınca, tekrar girişte menü açık gelmesin
+    setCurrentView('all')  // tekrar girişte ana sayfadan başlasın
   }
 
-  // Menüden bir sayfa seçilince hem sayfayı değiştir hem menüyü kapat
-  // (Listelerim'deki hızlı liste kartları ve Watchlist'teki geri butonu da bunu kullanıyor)
+  // Bir sayfa seçilince hem sayfayı değiştir hem (açıksa) yan menüyü kapat.
+  // Sidebar, BottomNav, tür etiketleri, Listelerim kartları ve geri butonları bunu kullanıyor.
   function handleViewChange(view) {
     setCurrentView(view)
     setSidebarOpen(false)
@@ -264,7 +276,7 @@ function App() {
 
   return (
     <div className={`app-container ${darkMode ? 'dark-mode' : ''} ${sidebarOpen ? 'sidebar-open' : ''}`}>
-      {/* Hamburger buton: CSS ile sadece dar ekranlarda görünüyor */}
+      {/* Hamburger buton: telefonda CSS ile gizli (yerine BottomNav var) */}
       <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
         {sidebarOpen ? '✕' : '☰'}
       </button>
@@ -289,7 +301,7 @@ function App() {
 
         {/* currentView'a göre hangi sayfanın gösterileceği */}
         {currentView === 'profile' ? (
-          <Profile />
+          <Profile onLogout={handleLogout} />
         ) : currentView === 'stats' ? (
           <Stats items={items} darkMode={darkMode} />
         ) : currentView === 'izlemeListem' ? (
@@ -314,6 +326,22 @@ function App() {
           <>
             {/* ===== ANA SAYFA / TÜR SAYFALARI / FAVORİLER ===== */}
             <h1>{getPageTitle()}</h1>
+
+            {/* Tür etiketleri (sadece telefonda, CSS ile). Favorilerde gösterme */}
+            {currentView !== 'favorites' && (
+              <div className="type-chips">
+                {TYPE_CHIPS.map(chip => (
+                  <button
+                    key={chip.value}
+                    className={`type-chip ${currentView === chip.value ? 'active' : ''}`}
+                    onClick={() => handleViewChange(chip.value)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p>Kitap, Dizi, Film, Belgesel, Animasyon ve Anime takibini buradan yapabilirsin.</p>
 
             {/* Arama, sıralama ve görünüm (ızgara/liste) */}
@@ -429,6 +457,12 @@ function App() {
           </>
         )}
       </main>
+
+      {/* Telefonda alttaki sekme çubuğu (masaüstünde CSS ile gizli) */}
+      <BottomNav
+        currentView={currentView}
+        onViewChange={handleViewChange}
+      />
     </div>
   )
 }

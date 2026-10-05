@@ -1,9 +1,17 @@
+// ============================================================
+// Profile.jsx
+// Profil sayfası: mevcut avatar ve kullanıcı adını gösterir;
+// "Profilimi Düzenle" ile avatar, kullanıcı adı ve şifre değiştirilebilir.
+// Telefonda yan menü olmadığı için "Çıkış Yap" butonu da burada.
+// ============================================================
+
 import { useState } from 'react'
 import { useToast } from './ToastContext'
 import AvatarIcon, { AVATAR_OPTIONS } from './AvatarIcon'
 import { apiFetch } from './api'
 
-function Profile() {
+// onLogout: çıkış yap butonu için (App'teki handleLogout)
+function Profile({ onLogout }) {
   const showToast = useToast()
 
   const [isEditing, setIsEditing] = useState(false)
@@ -17,6 +25,7 @@ function Profile() {
   // Düzenleme sırasında seçilen (henüz kaydedilmemiş) avatar
   const [selectedAvatarKey, setSelectedAvatarKey] = useState(currentAvatarKey)
 
+  // Değişiklikleri kaydet (kullanıcı backend'de token'dan bulunuyor)
   async function handleSave(e) {
     e.preventDefault()
 
@@ -24,7 +33,7 @@ function Profile() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        newUsername: newUsername || null,
+        newUsername: newUsername || null,  // boşsa "değiştirme" anlamında null gönder
         newPassword: newPassword || null,
         newAvatarKey: selectedAvatarKey
       })
@@ -34,6 +43,7 @@ function Profile() {
     const data = await response.json().catch(() => ({}))
 
     if (response.ok) {
+      // Yeni bilgileri hem localStorage'a hem ekrana yansıt
       localStorage.setItem('loggedInUser', data.username)
       localStorage.setItem('avatarKey', data.avatarKey)
       setCurrentAvatarKey(data.avatarKey)
@@ -62,11 +72,12 @@ function Profile() {
         <button onClick={() => setIsEditing(true)}>✏️ Profilimi Düzenle</button>
       ) : (
         <form onSubmit={handleSave} className="edit-profile-form">
+          {/* Avatar seçici */}
           <p className="avatar-picker-label">Avatarını seç:</p>
           <div className="avatar-picker-grid">
             {AVATAR_OPTIONS.map(option => (
               <button
-                type="button"
+                type="button"  // formu göndermesin, sadece seçsin
                 key={option.key}
                 className={`avatar-picker-item ${selectedAvatarKey === option.key ? 'selected' : ''}`}
                 onClick={() => setSelectedAvatarKey(option.key)}
@@ -82,17 +93,26 @@ function Profile() {
             placeholder="Yeni Kullanıcı Adı (opsiyonel)"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
           />
           <input
             type="password"
             placeholder="Yeni Şifre (opsiyonel)"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
           />
           <button type="submit">💾 Kaydet</button>
           <button type="button" onClick={() => setIsEditing(false)}>❌ Vazgeç</button>
         </form>
       )}
+
+      {/* Çıkış (masaüstünde Sidebar'da da var, telefonda sadece burada) */}
+      <button className="profile-logout-btn" onClick={onLogout}>
+        🚪 Çıkış Yap
+      </button>
     </div>
   )
 }
