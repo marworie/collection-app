@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "Koleksiyonum",
   "short_name": "Koleksiyonum",
-  "description": "Kitap, dizi, film, ve anime koleksiyounu takip et",
-  "start url": "/",
+  "description": "Kitap, dizi, film ve belgesel koleksiyonunu takip et",
+  "scope": "/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#f3e8fd",
   "theme_color": "#7b2ff7",
