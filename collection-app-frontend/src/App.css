@@ -2194,3 +2194,21 @@ html.dark-mode::-webkit-scrollbar-thumb:hover {
   color: inherit;
   cursor: pointer;
 }
+
+/* Listelerim: bölüm başlıkları (Hızlı Listeler / Benim Listelerim) */
+.customlists-section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #888;
+  margin: 24px 0 12px;
+}
+
+/* Hızlı liste kartları: kapak alanı mor-pembe gradient olsun, diğerlerinden ayrışsın */
+.customlist-card.quick .customlist-cover {
+  background: linear-gradient(135deg, #7b2ff7, #f107a3);
+}
+
+.app-container.dark-mode .customlists-section-title {
+  color: #9090b0;
+}

@@ -16,7 +16,8 @@ const WATCH_TYPES = [
 // pageTitle: sayfa başlığı (örn. "🎬 İzleme Listem")
 // defaultType: Okuma listesinde "Kitap"; İzleme listesinde kullanıcı türü kendisi seçer
 // onItemAdded: koleksiyona öğe eklenince App'e haber vermek için (ana sayfa güncel kalsın)
-function Watchlist({ category, pageTitle, defaultType, onItemAdded }) {
+
+function Watchlist({ category, pageTitle, defaultType, onItemAdded, onBack}) {
   const showToast = useToast()
   const [items, setItems] = useState([])
   const [newTitle, setNewTitle] = useState('')
@@ -165,6 +166,9 @@ function Watchlist({ category, pageTitle, defaultType, onItemAdded }) {
 
   return (
     <div className="watchlist-page">
+      <button className="customlist-back-btn" onClick={onBack}>
+        ← Listelerim
+      </button>
       <h2>{pageTitle}</h2>
 
       <form onSubmit={handleAdd} className="watchlist-add-form">

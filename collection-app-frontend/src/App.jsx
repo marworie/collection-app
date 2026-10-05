@@ -1,4 +1,12 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿// ============================================================
+// App.jsx
+// Uygulamanın ana bileşeni. Giriş durumunu, karanlık modu, hangi sayfanın
+// açık olduğunu (currentView) ve koleksiyon öğelerini yönetir.
+// Sidebar'dan seçilen sayfaya göre ilgili bileşeni gösterir;
+// ana sayfada arama, filtreleme, sıralama ve öğe ekleme burada yapılır.
+// ============================================================
+
+import { useState, useEffect, useRef } from 'react'
 import Sidebar from './Sidebar'
 import Profile from './Profile'
 import ItemCard from './ItemCard'
@@ -117,6 +125,7 @@ function App() {
     }
   }, [showSplash])
 
+  // Giriş yapılınca öğeleri çek
   useEffect(() => {
     if (isLoggedIn) {
       fetchItems()
@@ -131,6 +140,7 @@ function App() {
   }
 
   // Menüden bir sayfa seçilince hem sayfayı değiştir hem menüyü kapat
+  // (Listelerim'deki hızlı liste kartları ve Watchlist'teki geri butonu da bunu kullanıyor)
   function handleViewChange(view) {
     setCurrentView(view)
     setSidebarOpen(false)
@@ -142,6 +152,7 @@ function App() {
     localStorage.setItem('darkMode', newValue)
   }
 
+  // Karanlık mod sınıfını body ve html'e de ekle (sayfanın tamamı boyansın)
   useEffect(() => {
     if (darkMode) {
       document.body.classList.add('dark-mode')
@@ -152,6 +163,7 @@ function App() {
     }
   }, [darkMode])
 
+  // Klavye kısayolları
   useEffect(() => {
     function handleKeyDown(e) {
       // "/" tuşu: arama kutusuna odaklan (ama zaten bir input'a yazıyorsak devreye girmesin)
@@ -185,6 +197,9 @@ function App() {
     return <LoginSplash />
   }
 
+  // ============ ANA SAYFA İÇİN FİLTRELEME VE SIRALAMA ============
+
+  // Sayfaya göre: favoriler ya da belirli bir tür
   let filteredItems = items
   if (currentView === 'favorites') {
     filteredItems = items.filter(item => item.isFavorite)
@@ -272,21 +287,36 @@ function App() {
           {darkMode ? '☀️' : '🌙'}
         </button>
 
+        {/* currentView'a göre hangi sayfanın gösterileceği */}
         {currentView === 'profile' ? (
           <Profile />
         ) : currentView === 'stats' ? (
           <Stats items={items} darkMode={darkMode} />
         ) : currentView === 'izlemeListem' ? (
-          <Watchlist category="İzleme" pageTitle="🎬 İzleme Listem" defaultType="Dizi" onItemAdded={fetchItems} /> 
+          <Watchlist
+            category="İzleme"
+            pageTitle="📌 İzleme Listem"
+            defaultType="Dizi"
+            onItemAdded={fetchItems}
+            onBack={() => handleViewChange('customLists')}
+          />
         ) : currentView === 'okumaListem' ? (
-          <Watchlist category="Okuma" pageTitle="📚 Okuma Listem" defaultType="Kitap" onItemAdded={fetchItems} />  
+          <Watchlist
+            category="Okuma"
+            pageTitle="📑 Okuma Listem"
+            defaultType="Kitap"
+            onItemAdded={fetchItems}
+            onBack={() => handleViewChange('customLists')}
+          />
         ) : currentView === 'customLists' ? (
-          <CustomLists />
+          <CustomLists onOpenWatchlist={handleViewChange} />
         ) : (
           <>
+            {/* ===== ANA SAYFA / TÜR SAYFALARI / FAVORİLER ===== */}
             <h1>{getPageTitle()}</h1>
             <p>Kitap, Dizi, Film, Belgesel, Animasyon ve Anime takibini buradan yapabilirsin.</p>
 
+            {/* Arama, sıralama ve görünüm (ızgara/liste) */}
             <div className="list-controls">
               <input
                 id="item-search"
@@ -323,6 +353,7 @@ function App() {
               </div>
             </div>
 
+            {/* Filtrele, CSV, Ne İzlesem, Ekle butonları */}
             <div className="action-buttons-row">
               <FilterPanel items={items} filters={filters} onChange={setFilters} />
               <button
@@ -371,6 +402,7 @@ function App() {
               </p>
             )}
 
+            {/* Manuel sıralamada sürükle-bırak listesi, diğer durumlarda normal kartlar */}
             {sortBy === 'manual' && !searchActive ? (
               <DraggableItemList
                 items={filteredItems}
