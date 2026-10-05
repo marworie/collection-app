@@ -19,7 +19,7 @@ function Login({ onLoginSuccess }) {
       const response = await fetch(`/api/Auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password})
+        body: JSON.stringify({ username: username.trim(), password})// başta/sonda boşluk varsa sil
       })
 
       // Gövde boş gelirse (örn. bazı 401'ler) json() patlamasın
@@ -58,6 +58,10 @@ function Login({ onLoginSuccess }) {
           placeholder="Kullanıcı Adı"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          autoComplete="username"
           required
         />
         <div className="password-wrapper">
@@ -66,6 +70,10 @@ function Login({ onLoginSuccess }) {
                 placeholder="Şifre"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                 required
             />
             <span
